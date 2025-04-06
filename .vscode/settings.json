@@ -21,6 +21,8 @@
 		"*.rbxl": true,
 		"*.blend": true,
 		"*.blend1": true,
+		"stage-src": true,
+		"node_modules": true,
 		"build": true,
 		"default.project.json": true,
 		"darklua-sourcemap.json": true,

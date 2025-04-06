@@ -1,54 +1,48 @@
 --!strict
 -- Services
-local HttpService = game:GetService("HttpService")
 -- Packages
-local Option = require("@wally/Option")
-local Result = require("@wally/Result")
-local Future = require("@wally/Future")
+local LuneUtil = require("@pkg/@nightcycle/lune-util")
+local Option = require("@pkg/@nightcycle/option")
+local Result = require("@pkg/@nightcycle/result")
+local Future = require("@pkg/@nightcycle/future")
+local Error = require("@pkg/@nightcycle/error")
+local HashMap = require("@pkg/@nightcycle/hash-map")
+
 -- Modules
-local Headers = require("@proj/Headers")
-local Body = require("@proj/Body")
-local Url = require("@proj/Url")
+local Body = require("./Body")
+local Url = require("./Url")
 -- Types
-type HeaderMap = Headers.HeaderMap
+type HashMap<K, V> = HashMap.HashMap<K, V>
+export type HeaderValue = Secret | string
+export type HeaderKey = Secret | string
+export type HeaderMap = HashMap<HeaderKey, HeaderValue>
 type Body = Body.Body
 type Json = Body.Json
 type Url = Url.Url
 type Option<V> = Option.Option<V>
 type Result<V, E> = Result.Result<V, E>
 type Future<V> = Future.Future<V>
-export type RBXResponse = {
-	Success: boolean,
-	StatusCode: number,
-	StatusMessage: string,
-	Headers: { [string]: string },
-	Body: string,
-}
+type Error<T, Body> = Error.Error<T, Body>
+type DecodingError = Error<"DecodingError", Response>
 type ResponseImpl = {
 	__index: ResponseImpl,
-	text: (self: Response) -> Result<string, string>,
-	json: (self: Response) -> Result<Json, string>,
-	bytes: (self: Response) -> Result<buffer, string>,
-	headers: (self: Response) -> HeaderMap,
-	contentLength: (self: Response) -> Option<number>,
-	status: (self: Response) -> number,
-	url: (self: Response) -> Url,
-	new: (url: Url, rbx: RBXResponse) -> Response,
+	text: (self: any) -> Result<string, DecodingError>,
+	json: (self: any) -> Result<Json, DecodingError>,
+	bytes: (self: any) -> Result<buffer, DecodingError>,
+	headers: (self: any) -> HeaderMap,
+	contentLength: (self: any) -> Option<number>,
+	status: (self: any) -> number,
+	url: (self: any) -> Url,
 }
 
 export type Response = typeof(setmetatable(
 	{} :: {
-		_Url: Url,
-		_rbxResponse: {
-			Success: boolean,
-			StatusCode: number,
-			StatusMessage: string,
-			Headers: { [string]: string },
-			Body: string,
-		},
+		_url: Url,
+		_fetchResponse: LuneUtil.FetchResponse,
 	},
 	{} :: ResponseImpl
 ))
+
 -- Constants
 local ERROR_CODES = {
 	BAD_REQUEST = 400,
@@ -101,39 +95,54 @@ local ERROR_CODES = {
 local Response = {} :: ResponseImpl
 Response.__index = Response
 
-function Response:text(): Result<string, string>
-	return Result.ok(self._rbxResponse.Body)
+function Response:text(): Result<string, DecodingError>
+	return Result.ok(self._fetchResponse.body)
 end
 
-function Response:json(): Result<Json, string>
-	local ok, result = pcall(function()
-		return HttpService:JSONDecode(self._rbxResponse.Body)
+function Response:json(): Result<Json, DecodingError>
+	local result = Result.try(function()
+		return LuneUtil.Net.jsonDecode(self._fetchResponse.body)
 	end)
-	if ok then
-		return Result.ok(result)
+	if result:isOk() then
+		return Result.ok(result:unwrap())
 	else
-		return Result.err("Failed to decode JSON: " .. result)
+		return Result.err(
+			Error.new("DecodingError")
+				:body(self :: any)
+				:description(result:unwrapErr())
+				:title("JSON Decoding Error")
+				:build() :: Error<any, Response>
+		)
 	end
 end
 
-function Response:bytes(): Result<buffer, string>
-	if self._rbxResponse.Success then
-		return Result.ok(buffer.fromstring(self._rbxResponse.Body))
+function Response:bytes(): Result<buffer, DecodingError>
+	local result = Result.try(function()
+		return buffer.fromstring(self._fetchResponse.body)
+	end)
+	if result:isOk() then
+		return Result.ok(result:unwrap())
 	else
-		return Result.err("Failed to get bytes from response")
+		return Result.err(
+			Error.new("DecodingError")
+				:body(self :: any)
+				:description(result:unwrapErr())
+				:title("JSON Decoding Error")
+				:build() :: Error<any, Response>
+		)
 	end
 end
 
 function Response:headers(): HeaderMap
-	local headers = Headers.HeaderMap.new()
-	for key, value in pairs(self._rbxResponse.Headers) do
+	local headers = HashMap.emptyMut()
+	for key, value in pairs(self._fetchResponse.headers) do
 		headers:insert(key, value)
 	end
 	return headers
 end
 
 function Response:contentLength(): Option<number>
-	local lengthStr = self._rbxResponse.Headers["Content-Length"]
+	local lengthStr = self._fetchResponse.headers["Content-Length"]
 	if lengthStr then
 		local length = tonumber(lengthStr)
 		assert(length, "Failed to parse Content-Length header")
@@ -144,14 +153,21 @@ function Response:contentLength(): Option<number>
 end
 
 function Response:status(): number
-	return self._rbxResponse.StatusCode
+	return self._fetchResponse.statusCode
 end
 
 function Response:url(): Url
-	return self._Url
+	return self._url
 end
 
 return {
-	Response = Response,
+	new = function(url: Url, fetchResponse: LuneUtil.FetchResponse): Response
+		local self = setmetatable({
+			_url = url,
+			_fetchResponse = fetchResponse,
+		}, Response)
+		table.freeze(self)
+		return self
+	end,
 	ERROR_CODES = ERROR_CODES,
 }

@@ -8,9 +8,10 @@ registry = "https://github.com/upliftgames/wally-index"
 exclude = ["Packages", ".vscode"]
 
 [dependencies]
-Future = "nightcycle/future@^0"
-Result = "nightcycle/result@^0"
-Option = "nightcycle/option@^0"
-SerdeJson = "nightcycle/serde-json@^0"
-NetworkUtil = "nightcycle/network-util@2.1.0"
-HashUtil = "boatbomber/hashlib@1.0.0"
+option = "nightcycle/option@^0"
+result = "nightcycle/result@^0"
+future = "nightcycle/future@^0"
+error = "nightcycle/error@^0"
+vec = "nightcycle/vec@^0"
+hash-map = "nightcycle/hash-map@^0"
+lune-util = "nightcycle/lune-util@^0"

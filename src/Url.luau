@@ -1,26 +1,27 @@
 --!strict
 -- Services
 -- Packages
-local Result = require("@wally/Result")
-local Option = require("@wally/Option")
+local Result = require("@pkg/@nightcycle/result")
+local Option = require("@pkg/@nightcycle/option")
+local HashMap = require("@pkg/@nightcycle/hash-map")
 -- Modules
 -- Types
 type Option<V> = Option.Option<V>
 type Result<V, E> = Result.Result<V, E>
+type HashMap<K, V> = HashMap.HashMap<K, V>
 export type TryFromUrl = string | Secret
 type UrlImpl = {
-	__tostring: (self: Url) -> string | Secret,
+	__tostring: (self: any) -> string | Secret,
 	__index: UrlImpl,
-	path: (self: Url) -> string,
-	domain: (self: Url) -> string,
-	query: (self: Url, query: { [string]: string }) -> Url,
-	tryFrom: (value: TryFromUrl) -> Result<Url, string>,
+	path: (self: any) -> string,
+	domain: (self: any) -> string,
+	query: (self: any, query: HashMap<string, string>) -> Url,
 }
 
 export type Url = typeof(setmetatable(
 	{} :: {
 		_source: TryFromUrl,
-		_query: { [string]: string },
+		_query: HashMap<string, string>,
 	},
 	{} :: UrlImpl
 ))
@@ -33,10 +34,10 @@ export type Url = typeof(setmetatable(
 local Url = {} :: UrlImpl
 Url.__index = Url
 
-function newUrl(source: TryFromUrl, query: { [string]: string }): Url
+function newUrl(source: TryFromUrl, query: HashMap<string, string>): Url
 	return setmetatable({
 		_source = source,
-		_query = table.freeze(table.clone(query)),
+		_query = query,
 	}, Url)
 end
 
@@ -61,7 +62,7 @@ end
 
 function Url:__tostring(): TryFromUrl
 	local queryParts: { string } = {}
-	for key, value in pairs(self._query) do
+	for key, value in pairs(self._query:drain()) do
 		table.insert(queryParts, ("%s=%s"):format(key, value))
 	end
 	local query = table.concat(queryParts, "&")
@@ -72,18 +73,14 @@ function Url:__tostring(): TryFromUrl
 	end
 end
 
-function Url:query(query: { [string]: string })
+function Url:query(query: HashMap<string, string>)
 	return newUrl(self._source, query)
 end
 
-Url.tryFrom = (
-	function(value: TryFromUrl): Result<Url, string>
-		return Result.try(function()
-			return newUrl(value, {})
-		end) :: any
-	end
-) :: any
-
 return {
-	Url = Url,
+	tryFrom = function(value: TryFromUrl): Result<Url, string>
+		return Result.try(function()
+			return newUrl(value, HashMap.empty())
+		end) :: any
+	end,
 }

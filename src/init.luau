@@ -3,16 +3,13 @@
 -- Packages
 
 -- Modules
-local Body = require("@proj/Body")
-local Headers = require("@proj/Headers")
-local Request = require("@proj/Request")
-local Response = require("@proj/Response")
-local Url = require("@proj/Url")
-local Client = require("@proj/Client")
+local Body = require("./Body")
+local Request = require("./Request")
+local Response = require("./Response")
+local Url = require("./Url")
+local Client = require("./Client")
 -- Types
-export type HeaderMap = Headers.HeaderMap
-export type HeaderName = Headers.HeaderName
-export type HeaderValue = Headers.HeaderValue
+export type HeaderMap = Response.HeaderMap
 export type Body = Body.Body
 export type Json = Body.Json
 export type Request = Request.Request
@@ -31,7 +28,6 @@ export type TryFromUrl = Url.TryFromUrl
 -- Class
 return {
 	Body = Body,
-	Headers = Headers,
 	Request = Request,
 	Response = Response,
 	Client = Client,

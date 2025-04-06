@@ -1,21 +1,18 @@
 --!strict
 -- Services
 -- Packages
-local Option = require("@wally/Option")
-local Result = require("@wally/Result")
-local Future = require("@wally/Future")
+local Option = require("@pkg/@nightcycle/option")
+local Result = require("@pkg/@nightcycle/result")
+local Future = require("@pkg/@nightcycle/future")
 -- Modules
-local Headers = require("@proj/Headers")
-local Request = require("@proj/Request")
-local Response = require("@proj/Response")
-
-local Url = require("@proj/Url")
+local Request = require("./Request")
+local Response = require("./Response")
+local Url = require("./Url")
 -- Types
-type HeaderMap = Headers.HeaderMap
+type HeaderMap = Response.HeaderMap
 type Url = Url.Url
 type TryFromUrl = Url.TryFromUrl
-type TryFromHeaderValue = Headers.TryFromHeaderValue
-type HeaderValue = Headers.HeaderValue
+type HeaderValue = Response.HeaderValue
 type Request = Request.Request
 type RequestBuilder = Request.RequestBuilder
 type Method = Request.Method
@@ -31,68 +28,53 @@ export type ClientStruct = {
 }
 type ClientImpl = {
 	__index: ClientImpl,
-	new: () -> Client,
-	builder: (self: Client) -> ClientBuilder,
-	get: (self: Client, url: TryFromUrl | Url) -> RequestBuilder,
-	post: (self: Client, url: TryFromUrl | Url) -> RequestBuilder,
-	put: (self: Client, url: TryFromUrl | Url) -> RequestBuilder,
-	delete: (self: Client, url: TryFromUrl | Url) -> RequestBuilder,
-	patch: (self: Client, url: TryFromUrl | Url) -> RequestBuilder,
-	head: (self: Client, url: TryFromUrl | Url) -> RequestBuilder,
-	request: (self: Client, method: Method, url: TryFromUrl | Url) -> RequestBuilder,
-	execute: (self: Client, request: Request) -> Future<Result<Result<Response, Response>, string>>,
+	builder: (self: any) -> ClientBuilder,
+	get: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
+	post: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
+	put: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
+	delete: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
+	patch: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
+	request: (self: any, method: Method, url: TryFromUrl | Url) -> RequestBuilder,
+	execute: (self: any, request: Request) -> Future<Result<Result<Response, Response>, string>>,
 }
 
 export type Client = typeof(setmetatable({} :: ClientStruct, {} :: ClientImpl))
 
 type ClientBuilderImpl = {
 	__index: ClientBuilderImpl,
-	build: (self: ClientBuilder) -> Client,
-	userAgent: (self: ClientBuilder, userAgent: HeaderValue | TryFromHeaderValue) -> ClientBuilder,
-	defaultHeaders: (self: ClientBuilder, headers: HeaderMap) -> ClientBuilder,
-	gzip: (self: ClientBuilder, enabled: boolean) -> ClientBuilder,
-	new: () -> ClientBuilder,
+	build: (self: any) -> Client,
+	userAgent: (self: any, userAgent: HeaderValue | HeaderValue) -> ClientBuilder,
+	defaultHeaders: (self: any, headers: HeaderMap) -> ClientBuilder,
+	gzip: (self: any, enabled: boolean) -> ClientBuilder,
 }
-export type ClientBuilder = typeof(setmetatable(
-	{} :: ClientStruct,
-	{} :: ClientBuilderImpl
-))
+export type ClientBuilder = typeof(setmetatable({} :: ClientStruct, {} :: ClientBuilderImpl))
 
 -- Constants
 -- Variables
 -- References
 -- Private Functions
-function newRequest(client: Client, method: Method, url: TryFromUrl | Url): RequestBuilder
-	local out = Request.RequestBuilder.new(method, url)
+function newRequestBuilder(client: Client, method: Method, url: TryFromUrl | Url): RequestBuilder
+	local out = Request.new(method, url)
 
-	out = client._defaultHeaders:match(
-		function(headers)
-			return out:headers(headers)
-		end,
-		function()
-			return out
-		end
-	)
+	out = client._defaultHeaders:match(function(headers)
+		return out:headers(headers)
+	end, function()
+		return out
+	end)
 
-	out = client._gzip:match(
-		function(gzip)
-			return out:header("Accept-Encoding", "gzip")
-		end,
-		function()
-			return out
-		end
-	)
+	out = client._gzip:match(function(gzip)
+		return out:header("Accept-Encoding", "gzip")
+	end, function()
+		return out
+	end)
 
-	out = client._userAgent:match(
-		function(userAgent)
-			return out:header("User-Agent", if typeof(userAgent) == "table" then userAgent.value else userAgent)
-		end,
-		function()
-			return out
-		end
-	)
+	out = client._userAgent:match(function(userAgent)
+		return out:header("User-Agent", if typeof(userAgent) == "table" then userAgent.value else userAgent)
+	end, function()
+		return out
+	end)
 
-	return out
+	return out :: any
 end
 
 -- Class
@@ -127,90 +109,56 @@ function newBuilder(client: Client): ClientBuilder
 end
 
 function Client:get(url: TryFromUrl | Url): RequestBuilder
-	return newRequest(self, "GET", url)
+	return newRequestBuilder(self, "GET", url) :: any
 end
 
 function Client:post(url: TryFromUrl | Url): RequestBuilder
-	return newRequest(self, "POST", url)
+	return newRequestBuilder(self, "POST", url) :: any
 end
 
 function Client:put(url: TryFromUrl | Url): RequestBuilder
-	return newRequest(self, "PUT", url)
+	return newRequestBuilder(self, "PUT", url) :: any
 end
 
 function Client:delete(url: TryFromUrl | Url): RequestBuilder
-	return newRequest(self, "DELETE", url)
+	return newRequestBuilder(self, "DELETE", url) :: any
 end
 
 function Client:patch(url: TryFromUrl | Url): RequestBuilder
-	return newRequest(self, "PATCH", url)
-end
-
-function Client:head(url: TryFromUrl | Url): RequestBuilder
-	return newRequest(self, "HEAD", url)
+	return newRequestBuilder(self, "PATCH", url) :: any
 end
 
 function Client:request(method: Method, url: TryFromUrl | Url): RequestBuilder
-	return newRequest(self, method, url)
+	return newRequestBuilder(self, method, url) :: any
 end
 
 function Client:execute(request: Request): Future<Result<Result<Response, Response>, string>>
-	return request:send()
+	local req: any = request
+	return req:send()
 end
 
 function Client:builder(): ClientBuilder
-	return newBuilder(self)
-end
-
-function Client.new()
-	return newClient(
-		Option.none(),
-		Option.none(),
-		Option.none()
-	)
+	return newBuilder(self) :: any
 end
 
 function ClientBuilder:gzip(enabled: boolean): ClientBuilder
-	return newClient(
-		self._userAgent,
-		self._defaultHeaders,
-		Option.some(enabled)
-	):builder()
+	return newClient(self._userAgent, self._defaultHeaders, Option.some(enabled)):builder() :: any
 end
 
 function ClientBuilder:defaultHeaders(headers: HeaderMap): ClientBuilder
-	return newClient(
-		self._userAgent,
-		Option.some(headers),
-		self._gzip
-	):builder()
+	return newClient(self._userAgent, Option.some(headers), self._gzip):builder() :: any
 end
 
-function ClientBuilder:userAgent(userAgent: HeaderValue | TryFromHeaderValue): ClientBuilder
-	local userAgentHeaderValue: HeaderValue = if typeof(userAgent) == "table"
-		then userAgent
-		else Headers.HeaderValue.tryFrom(userAgent):unwrap()
-
-	return newClient(
-		Option.some(userAgentHeaderValue),
-		self._defaultHeaders,
-		self._gzip
-	):builder()
+function ClientBuilder:userAgent(userAgent: HeaderValue): ClientBuilder
+	return newClient(Option.some(userAgent), self._defaultHeaders, self._gzip):builder() :: any
 end
 
 function ClientBuilder:build(): Client
-	return Client.new()
-end
-
-function ClientBuilder.new()
-	return newClient(
-		Option.none(),
-		Option.none(),
-		Option.none()
-	):builder()
+	return newClient(self._userAgent, self._defaultHeaders, self._gzip) :: any
 end
 
 return {
-	Client = Client,
-	ClientBuilder = ClientBuilder,
+	new = function(): ClientBuilder
+		return newClient(Option.none(), Option.none(), Option.none()):builder() :: any
+	end,
 }
