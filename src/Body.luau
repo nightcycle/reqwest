@@ -15,7 +15,6 @@ export type ContentType = "text/json" | "application/octet-stream" | "text/plain
 type EncodingError = Error<"EncodingError", ContentType>
 type BodyImpl = {
 	__index: BodyImpl,
-	__tostring: (self: any) -> string,
 	asBytes: (self: any) -> Result<buffer, EncodingError>,
 	asText: (self: any) -> Result<string, EncodingError>,
 	asJson: (self: any) -> Result<Json, EncodingError>,
