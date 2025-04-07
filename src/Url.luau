@@ -17,14 +17,12 @@ type UrlImpl = {
 	domain: (self: any) -> string,
 	query: (self: any, query: HashMap<string, string>) -> Url,
 }
+type UrlStruct = {
+	_source: TryFromUrl,
+	_query: HashMap<string, string>,
+}
 
-export type Url = typeof(setmetatable(
-	{} :: {
-		_source: TryFromUrl,
-		_query: HashMap<string, string>,
-	},
-	{} :: UrlImpl
-))
+export type Url = typeof(setmetatable({} :: any, {} :: UrlImpl))
 
 -- Constants
 -- Variables

@@ -35,13 +35,12 @@ type ResponseImpl = {
 	url: (self: any) -> Url,
 }
 
-export type Response = typeof(setmetatable(
-	{} :: {
-		_url: Url,
-		_fetchResponse: LuneUtil.FetchResponse,
-	},
-	{} :: ResponseImpl
-))
+type ResponseStruct = {
+	_url: Url,
+	_fetchResponse: LuneUtil.FetchResponse,
+}
+
+export type Response = typeof(setmetatable({} :: any, {} :: ResponseImpl))
 
 -- Constants
 local ERROR_CODES = {

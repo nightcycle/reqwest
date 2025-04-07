@@ -38,7 +38,7 @@ type ClientImpl = {
 	execute: (self: any, request: Request) -> Future<Result<Result<Response, Response>, string>>,
 }
 
-export type Client = typeof(setmetatable({} :: ClientStruct, {} :: ClientImpl))
+export type Client = typeof(setmetatable({} :: any, {} :: ClientImpl))
 
 type ClientBuilderImpl = {
 	__index: ClientBuilderImpl,
@@ -47,7 +47,7 @@ type ClientBuilderImpl = {
 	defaultHeaders: (self: any, headers: HeaderMap) -> ClientBuilder,
 	gzip: (self: any, enabled: boolean) -> ClientBuilder,
 }
-export type ClientBuilder = typeof(setmetatable({} :: ClientStruct, {} :: ClientBuilderImpl))
+export type ClientBuilder = typeof(setmetatable({} :: any, {} :: ClientBuilderImpl))
 
 -- Constants
 -- Variables

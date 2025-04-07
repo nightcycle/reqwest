@@ -20,7 +20,7 @@ export type Client = Client.Client
 export type ClientBuilder = Client.ClientBuilder
 export type Url = Url.Url
 export type TryFromUrl = Url.TryFromUrl
-
+export type ContentType = Body.ContentType
 -- Constants
 -- Variables
 -- References

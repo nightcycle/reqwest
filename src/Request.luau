@@ -44,7 +44,7 @@ type RequestStruct = {
 	_body: Option<Body>,
 	_headers: Option<HeaderMap>,
 }
-export type RequestBuilder = typeof(setmetatable({} :: RequestStruct, {} :: RequestBuilderImpl))
+export type RequestBuilder = typeof(setmetatable({} :: any, {} :: RequestBuilderImpl))
 export type Method = "GET" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH" -- limited by lune support
 
 type RequestImpl = {
@@ -52,7 +52,7 @@ type RequestImpl = {
 	builder: (self: Request) -> RequestBuilder,
 	send: (self: Request) -> Future<Result<Result<Response, Response>, string>>,
 }
-export type Request = typeof(setmetatable({} :: RequestStruct, {} :: RequestImpl))
+export type Request = typeof(setmetatable({} :: any, {} :: RequestImpl))
 
 -- Constants
 

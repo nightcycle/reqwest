@@ -23,7 +23,7 @@ type BodyStruct = {
 	_contentType: ContentType,
 	_content: Json | buffer | string,
 }
-export type Body = typeof(setmetatable({} :: BodyStruct, {} :: BodyImpl))
+export type Body = typeof(setmetatable({} :: any, {} :: BodyImpl))
 -- Constants
 -- Variables
 -- References
