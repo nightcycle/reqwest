@@ -15,6 +15,7 @@ export type ContentType = "text/json" | "application/octet-stream" | "text/plain
 type EncodingError = Error<"EncodingError", ContentType>
 type BodyImpl = {
 	__index: BodyImpl,
+	__tostring: (self: any) -> string,
 	asBytes: (self: any) -> Result<buffer, EncodingError>,
 	asText: (self: any) -> Result<string, EncodingError>,
 	asJson: (self: any) -> Result<Json, EncodingError>,
@@ -31,6 +32,10 @@ export type Body = BodyImpl --typeof(setmetatable({}, {} :: BodyImpl))
 -- Class
 local Body = {} :: BodyImpl
 Body.__index = Body
+
+function Body:__tostring(): string
+	return "Body<{" .. `"type": "{self._contentType}", "length": {self:asText():unwrapErr():len()}` .. "}>"
+end
 
 function Body:asBytes(): Result<buffer, EncodingError>
 	local result = Result.try(function()

@@ -27,6 +27,7 @@ type ClientStruct = {
 }
 type ClientImpl = {
 	__index: ClientImpl,
+	__tostring: (self: any) -> string,
 	builder: (self: any) -> ClientBuilder,
 	get: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
 	post: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
@@ -41,6 +42,7 @@ export type Client = ClientImpl --typeof(setmetatable({}, {} :: ClientImpl))
 
 type ClientBuilderImpl = {
 	__index: ClientBuilderImpl,
+	__tostring: (self: any) -> string,
 	build: (self: any) -> Client,
 	userAgent: (self: any, userAgent: HeaderValue | HeaderValue) -> ClientBuilder,
 	defaultHeaders: (self: any, headers: HeaderMap) -> ClientBuilder,
@@ -83,8 +85,24 @@ end
 local Client = {} :: ClientImpl
 Client.__index = Client
 
+function Client:__tostring(): string
+	return "Client<{"
+		.. `"userAgent": "{tostring(self._userAgent)}", "headers": "{tostring(self._defaultHeaders)}", "gzip": "{tostring(
+			self._gzip
+		)}"`
+		.. "}>"
+end
+
 local ClientBuilder = {} :: ClientBuilderImpl
 ClientBuilder.__index = ClientBuilder
+
+function ClientBuilder:__tostring(): string
+	return "ClientBuilder<{"
+		.. `"userAgent": "{tostring(self._userAgent)}", "headers": "{tostring(self._defaultHeaders)}", "gzip": "{tostring(
+			self._gzip
+		)}"`
+		.. "}>"
+end
 
 function newClient(
 	userAgent: Option<HeaderValue>,

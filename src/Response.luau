@@ -26,6 +26,7 @@ type Error<T, Body> = Error.Error<T, Body>
 type DecodingError = Error<"DecodingError", Response>
 type ResponseImpl = {
 	__index: ResponseImpl,
+	__tostring: (self: any) -> string,
 	text: (self: any) -> Result<string, DecodingError>,
 	json: (self: any) -> Result<Json, DecodingError>,
 	bytes: (self: any) -> Result<buffer, DecodingError>,
@@ -93,6 +94,12 @@ local ERROR_CODES = {
 
 local Response = {} :: ResponseImpl
 Response.__index = Response
+
+function Response:__tostring(): string
+	return "Response<{"
+		.. `"url": "{tostring(self._url)}", "response": {Error.displayAsJson(self._fetchResponse)}`
+		.. "}>"
+end
 
 function Response:text(): Result<string, DecodingError>
 	return Result.ok(self._fetchResponse.body)

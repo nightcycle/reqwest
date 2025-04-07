@@ -26,6 +26,7 @@ type Body = Body.Body
 
 type RequestBuilderImpl = {
 	__index: RequestBuilderImpl,
+	__tostring: (self: any) -> string,
 	basicAuth: (self: any, username: string, password: string) -> RequestBuilder,
 	bearerAuth: (self: any, token: string | Secret) -> RequestBuilder,
 	body: (self: any, body: Body) -> RequestBuilder,
@@ -34,7 +35,6 @@ type RequestBuilderImpl = {
 	headers: (self: any, headers: HeaderMap) -> RequestBuilder,
 	query: (self: any, query: HashMap<string, string>) -> RequestBuilder,
 	json: (self: any) -> RequestBuilder,
-	send: (self: any) -> Future<Result<Result<Response, Response>, string>>,
 }
 type Response = Response.Response
 type RequestStruct = {
@@ -49,10 +49,14 @@ export type Method = "GET" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH" -- 
 
 type RequestImpl = {
 	__index: RequestImpl,
+	__tostring: (self: any) -> string,
 	builder: (self: Request) -> RequestBuilder,
 	send: (self: Request) -> Future<Result<Result<Response, Response>, string>>,
 }
-export type Request = RequestImpl -- typeof(setmetatable({}, {} :: RequestImpl))
+export type Request = RequestImpl & {
+	method: Method,
+	url: Url,
+} -- typeof(setmetatable({}, {} :: RequestImpl))
 
 -- Constants
 
@@ -63,8 +67,24 @@ export type Request = RequestImpl -- typeof(setmetatable({}, {} :: RequestImpl))
 local Request = {} :: RequestImpl
 Request.__index = Request
 
-local RequestBuilder = {}
+function Request:__tostring(): string
+	return "Request<{"
+		.. `"method": "{tostring(self.method)}", "url": "{tostring(self.url)}", "query": "{tostring(
+			self._query
+		)}", "body": "{tostring(self._body)}", "headers": "{tostring(self._headers)}"`
+		.. "}>"
+end
+
+local RequestBuilder = {} :: RequestBuilderImpl
 RequestBuilder.__index = RequestBuilder
+
+function RequestBuilder:__tostring(): string
+	return "Request<{"
+		.. `"method": "{tostring(self.method)}", "url": "{tostring(self.url)}", "query": "{tostring(
+			self._query
+		)}", "body": "{tostring(self._body)}", "headers": "{tostring(self._headers)}"`
+		.. "}>"
+end
 
 function newRequest(
 	method: Method,
@@ -158,27 +178,27 @@ function RequestBuilder:body(body: Body): RequestBuilder
 		self._query :: any,
 		Option.some(body) :: any,
 		self._headers :: any
-	) :: any
+	):builder() :: any
 end
 
 function RequestBuilder:query(query: HashMap<string, string>): RequestBuilder
-	return newRequest(
+	return (newRequest(
 		self.method :: any,
 		self.url :: any,
 		Option.some(query),
 		self._body :: any,
 		self._headers :: any
-	) :: any
+	) :: any):builder() :: any
 end
 
 function RequestBuilder:headers(headers: HeaderMap): RequestBuilder
-	return newRequest(
+	return (newRequest(
 		self.method :: any,
 		self.url :: any,
 		self._query :: any,
 		self._body :: any,
 		Option.some(headers) :: any
-	) :: any
+	) :: any):builder() :: any
 end
 
 function RequestBuilder:header(key: HeaderKey, value: HeaderValue): RequestBuilder
@@ -215,10 +235,6 @@ end
 
 function RequestBuilder:json()
 	return self:header("Content-Type", "application/json")
-end
-
-function RequestBuilder:send(): Future<Result<Result<Response, Response>, string>>
-	return self:build():send()
 end
 
 return {
