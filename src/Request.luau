@@ -44,7 +44,7 @@ type RequestStruct = {
 	_body: Option<Body>,
 	_headers: Option<HeaderMap>,
 }
-export type RequestBuilder = typeof(setmetatable({} :: any, {} :: RequestBuilderImpl))
+export type RequestBuilder = typeof(setmetatable({}, {} :: RequestBuilderImpl))
 export type Method = "GET" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH" -- limited by lune support
 
 type RequestImpl = {
@@ -52,7 +52,7 @@ type RequestImpl = {
 	builder: (self: Request) -> RequestBuilder,
 	send: (self: Request) -> Future<Result<Result<Response, Response>, string>>,
 }
-export type Request = typeof(setmetatable({} :: any, {} :: RequestImpl))
+export type Request = RequestImpl -- typeof(setmetatable({}, {} :: RequestImpl))
 
 -- Constants
 
@@ -81,7 +81,7 @@ function newRequest(
 		_headers = headers,
 	}, Request)
 	table.freeze(self)
-	return self
+	return self :: any
 end
 
 function Request:builder(): RequestBuilder
@@ -94,18 +94,19 @@ end
 function Request:send(): Future<Result<Result<Response, Response>, string>>
 	return Future.from(function(): any
 		return Result.try(function()
-			local url = self._query:match(function(query): string
-				return tostring(self.url:query(query))
+			local req: RequestStruct = self :: any
+			local url = req._query:match(function(query): string
+				return tostring(req.url:query(query))
 			end, function(): string
-				return tostring(self.url)
+				return tostring(req.url)
 			end)
-			local body: string? = self._body:match(function(out): string?
+			local body: string? = req._body:match(function(out): string?
 				return tostring(out)
 			end, function()
 				return nil
 			end)
 
-			local headers: { [HeaderKey]: HeaderValue } = self._headers:match(
+			local headers: { [HeaderKey]: HeaderValue } = req._headers:match(
 				function(map: HeaderMap): { [HeaderKey]: HeaderValue }
 					return map:drain()
 				end,
@@ -121,7 +122,7 @@ function Request:send(): Future<Result<Result<Response, Response>, string>>
 
 			local fetchResponse: LuneUtil.FetchResponse = LuneUtil.Net.request({
 				url = url,
-				method = self.method :: any,
+				method = req.method :: any,
 				headers = headers :: any,
 				body = body,
 				options = {
@@ -129,7 +130,7 @@ function Request:send(): Future<Result<Result<Response, Response>, string>>
 				},
 			})
 
-			local response = Response.new(self.url, fetchResponse)
+			local response = Response.new(req.url, fetchResponse)
 
 			if fetchResponse.ok then
 				return Result.ok(response)

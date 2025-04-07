@@ -38,7 +38,7 @@ type ClientImpl = {
 	execute: (self: any, request: Request) -> Future<Result<Result<Response, Response>, string>>,
 }
 
-export type Client = typeof(setmetatable({} :: any, {} :: ClientImpl))
+export type Client = typeof(setmetatable({}, {} :: ClientImpl))
 
 type ClientBuilderImpl = {
 	__index: ClientBuilderImpl,
@@ -47,13 +47,13 @@ type ClientBuilderImpl = {
 	defaultHeaders: (self: any, headers: HeaderMap) -> ClientBuilder,
 	gzip: (self: any, enabled: boolean) -> ClientBuilder,
 }
-export type ClientBuilder = typeof(setmetatable({} :: any, {} :: ClientBuilderImpl))
+export type ClientBuilder = ClientBuilderImpl --typeof(setmetatable({}, {} :: ClientBuilderImpl))
 
 -- Constants
 -- Variables
 -- References
 -- Private Functions
-function newRequestBuilder(client: Client, method: Method, url: TryFromUrl | Url): RequestBuilder
+function newRequestBuilder(client: any, method: Method, url: TryFromUrl | Url): RequestBuilder
 	local out = Request.new(method, url)
 
 	out = client._defaultHeaders:match(function(headers)
@@ -92,20 +92,23 @@ function newClient(
 	defaultHeaders: Option<HeaderMap>,
 	gzip: Option<boolean>
 ): Client
-	local self = setmetatable({
-		_userAgent = userAgent,
-		_defaultHeaders = defaultHeaders,
-		_gzip = gzip,
-	}, Client)
+	local self = setmetatable(
+		{
+			_userAgent = userAgent,
+			_defaultHeaders = defaultHeaders,
+			_gzip = gzip,
+		} :: ClientStruct,
+		Client
+	)
 	table.freeze(self)
-	return self
+	return self :: any
 end
 
 function newBuilder(client: Client): ClientBuilder
 	local struct: ClientStruct = table.clone(client) :: any
 	local self = setmetatable(struct, ClientBuilder)
 	table.freeze(self)
-	return self
+	return self :: any
 end
 
 function Client:get(url: TryFromUrl | Url): RequestBuilder

@@ -23,7 +23,7 @@ type BodyStruct = {
 	_contentType: ContentType,
 	_content: Json | buffer | string,
 }
-export type Body = typeof(setmetatable({} :: any, {} :: BodyImpl))
+export type Body = BodyImpl --typeof(setmetatable({}, {} :: BodyImpl))
 -- Constants
 -- Variables
 -- References
@@ -117,7 +117,7 @@ return {
 			Body
 		)
 		table.freeze(out)
-		return out
+		return out :: any
 	end,
 	fromText = function(content: string): Body
 		local out = setmetatable(
@@ -128,7 +128,7 @@ return {
 			Body
 		)
 		table.freeze(out)
-		return out
+		return out :: any
 	end,
 	fromOctetStream = function(content: buffer): Body
 		local out = setmetatable(
@@ -139,6 +139,6 @@ return {
 			Body
 		)
 		table.freeze(out)
-		return out
+		return out :: any
 	end,
 }

@@ -40,7 +40,7 @@ type ResponseStruct = {
 	_fetchResponse: LuneUtil.FetchResponse,
 }
 
-export type Response = typeof(setmetatable({} :: any, {} :: ResponseImpl))
+export type Response = ResponseImpl --typeof(setmetatable({}, {} :: ResponseImpl))
 
 -- Constants
 local ERROR_CODES = {
@@ -166,7 +166,7 @@ return {
 			_fetchResponse = fetchResponse,
 		}, Response)
 		table.freeze(self)
-		return self
+		return self :: any
 	end,
 	ERROR_CODES = ERROR_CODES,
 }

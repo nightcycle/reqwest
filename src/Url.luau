@@ -22,7 +22,7 @@ type UrlStruct = {
 	_query: HashMap<string, string>,
 }
 
-export type Url = typeof(setmetatable({} :: any, {} :: UrlImpl))
+export type Url = typeof(setmetatable({}, {} :: UrlImpl))
 
 -- Constants
 -- Variables
