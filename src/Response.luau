@@ -16,19 +16,20 @@ type HashMap<K, V> = HashMap.HashMap<K, V>
 export type HeaderValue = Secret | string
 export type HeaderKey = Secret | string
 export type HeaderMap = HashMap<HeaderKey, HeaderValue>
-type Body = Body.Body
+
+type Body<V> = Body.Body<V>
 type Json = Body.Json
 type Url = Url.Url
 type Option<V> = Option.Option<V>
 type Result<V, E> = Result.Result<V, E>
 type Future<V> = Future.Future<V>
 type Error<T, Body> = Error.Error<T, Body>
-type DecodingError = Error<"DecodingError", Response>
-type ResponseImpl = {
-	__index: ResponseImpl,
+type DecodingError = Error<"DecodingError", ResponseStruct>
+type ResponseImpl<V> = {
+	__index: ResponseImpl<V>,
 	__tostring: (self: any) -> string,
 	text: (self: any) -> Result<string, DecodingError>,
-	json: (self: any) -> Result<Json, DecodingError>,
+	json: <V>(self: any) -> Result<Json & V, DecodingError>,
 	bytes: (self: any) -> Result<buffer, DecodingError>,
 	headers: (self: any) -> HeaderMap,
 	contentLength: (self: any) -> Option<number>,
@@ -41,7 +42,7 @@ type ResponseStruct = {
 	_fetchResponse: LuneUtil.FetchResponse,
 }
 
-export type Response = ResponseImpl --typeof(setmetatable({}, {} :: ResponseImpl))
+export type Response<V> = ResponseImpl<V> --typeof(setmetatable({}, {} :: ResponseImpl))
 
 -- Constants
 local ERROR_CODES = {
@@ -92,7 +93,7 @@ local ERROR_CODES = {
 -- Private Functions
 -- Class
 
-local Response = {} :: ResponseImpl
+local Response = {} :: ResponseImpl<any>
 Response.__index = Response
 
 function Response:__tostring(): string
@@ -105,7 +106,7 @@ function Response:text(): Result<string, DecodingError>
 	return Result.ok(self._fetchResponse.body)
 end
 
-function Response:json(): Result<Json, DecodingError>
+function Response:json<V>(): Result<Json & V, DecodingError>
 	local result = Result.try(function()
 		return LuneUtil.Net.jsonDecode(self._fetchResponse.body)
 	end)
@@ -117,12 +118,12 @@ function Response:json(): Result<Json, DecodingError>
 				:body(self :: any)
 				:description(result:unwrapErr())
 				:title("JSON Decoding Error")
-				:build() :: Error<any, Response>
+				:build() :: Error<any, ResponseStruct>
 		)
 	end
 end
 
-function Response:bytes(): Result<buffer, DecodingError>
+function Response:bytes<V>(): Result<buffer, DecodingError>
 	local result = Result.try(function()
 		return buffer.fromstring(self._fetchResponse.body)
 	end)
@@ -134,7 +135,7 @@ function Response:bytes(): Result<buffer, DecodingError>
 				:body(self :: any)
 				:description(result:unwrapErr())
 				:title("JSON Decoding Error")
-				:build() :: Error<any, Response>
+				:build() :: Error<any, ResponseStruct>
 		)
 	end
 end
@@ -167,7 +168,7 @@ function Response:url(): Url
 end
 
 return {
-	new = function(url: Url, fetchResponse: LuneUtil.FetchResponse): Response
+	new = function<V>(url: Url, fetchResponse: LuneUtil.FetchResponse): Response<V>
 		local self = setmetatable({
 			_url = url,
 			_fetchResponse = fetchResponse,

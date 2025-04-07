@@ -22,26 +22,26 @@ type Option<V> = Option.Option<V>
 type Result<V, E> = Result.Result<V, E>
 type Future<V> = Future.Future<V>
 
-type Body = Body.Body
+type Body<V> = Body.Body<V>
 
 type RequestBuilderImpl = {
 	__index: RequestBuilderImpl,
 	__tostring: (self: any) -> string,
 	basicAuth: (self: any, username: string, password: string) -> RequestBuilder,
 	bearerAuth: (self: any, token: string | Secret) -> RequestBuilder,
-	body: (self: any, body: Body) -> RequestBuilder,
+	body: <V>(self: any, body: Body<V>) -> RequestBuilder,
 	build: (self: any) -> Request,
 	header: (self: any, key: HeaderKey, value: HeaderValue) -> RequestBuilder,
 	headers: (self: any, headers: HeaderMap) -> RequestBuilder,
 	query: (self: any, query: HashMap<string, string>) -> RequestBuilder,
 	json: (self: any) -> RequestBuilder,
 }
-type Response = Response.Response
+type Response<V> = Response.Response<V>
 type RequestStruct = {
 	method: Method,
 	url: Url,
 	_query: Option<HashMap<string, string>>,
-	_body: Option<Body>,
+	_body: Option<Body<any>>,
 	_headers: Option<HeaderMap>,
 }
 export type RequestBuilder = RequestBuilderImpl -- typeof(setmetatable({}, {} :: RequestBuilderImpl))
@@ -51,7 +51,7 @@ type RequestImpl = {
 	__index: RequestImpl,
 	__tostring: (self: any) -> string,
 	builder: (self: Request) -> RequestBuilder,
-	send: (self: Request) -> Future<Result<Response, Response>>,
+	send: <V, E>(self: Request) -> Future<Result<Response<V>, Response<E>>>,
 }
 export type Request = RequestImpl & {
 	method: Method,
@@ -86,11 +86,11 @@ function RequestBuilder:__tostring(): string
 		.. "}>"
 end
 
-function newRequest(
+function newRequest<V>(
 	method: Method,
 	url: Url | TryFromUrl,
 	query: Option<HashMap<string, string>>,
-	body: Option<Body>,
+	body: Option<V>,
 	headers: Option<HeaderMap>
 ): Request
 	local self = setmetatable({
@@ -111,7 +111,7 @@ function Request:builder(): RequestBuilder
 	return out :: any
 end
 
-function Request:send(): Future<Result<Response, Response>>
+function Request:send<V, E>(): Future<Result<Response<V>, Response<E>>>
 	return Future.from(function(): any
 		local req: RequestStruct = self :: any
 		local url = req._query:match(function(query): string
@@ -169,7 +169,7 @@ function RequestBuilder:build(): Request
 	) :: any
 end
 
-function RequestBuilder:body(body: Body): RequestBuilder
+function RequestBuilder:body<V>(body: Body<any>): RequestBuilder
 	return newRequest(
 		self.method :: any,
 		self.url :: any,

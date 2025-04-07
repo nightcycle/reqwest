@@ -13,24 +13,24 @@ type Error<V, B> = Error.Error<V, B>
 export type Json = { [string]: string | boolean | number | Json } | { string | boolean | number | Json }
 export type ContentType = "text/json" | "application/octet-stream" | "text/plain"
 type EncodingError = Error<"EncodingError", ContentType>
-type BodyImpl = {
-	__index: BodyImpl,
+type BodyImpl<V> = {
+	__index: BodyImpl<V>,
 	__tostring: (self: any) -> string,
 	asBytes: (self: any) -> Result<buffer, EncodingError>,
 	asText: (self: any) -> Result<string, EncodingError>,
-	asJson: (self: any) -> Result<Json, EncodingError>,
+	asJson: (self: any) -> Result<V & Json, EncodingError>,
 }
 type BodyStruct = {
 	_contentType: ContentType,
 	_content: Json | buffer | string,
 }
-export type Body = BodyImpl --typeof(setmetatable({}, {} :: BodyImpl))
+export type Body<V> = BodyImpl<V> --typeof(setmetatable({}, {} :: BodyImpl))
 -- Constants
 -- Variables
 -- References
 -- Private Functions
 -- Class
-local Body = {} :: BodyImpl
+local Body = {} :: BodyImpl<any>
 Body.__index = Body
 
 function Body:__tostring(): string
@@ -113,7 +113,7 @@ function Body:asJson(): Result<Json, EncodingError>
 end
 
 return {
-	fromJson = function(content: Json): Body
+	fromJson = function<V>(content: Json): Body<V>
 		local out = setmetatable(
 			{
 				_contentType = "text/json",
@@ -124,7 +124,7 @@ return {
 		table.freeze(out)
 		return out :: any
 	end,
-	fromText = function(content: string): Body
+	fromText = function<V>(content: string): Body<V>
 		local out = setmetatable(
 			{
 				_contentType = "text/plain",
@@ -135,7 +135,7 @@ return {
 		table.freeze(out)
 		return out :: any
 	end,
-	fromOctetStream = function(content: buffer): Body
+	fromOctetStream = function<V>(content: buffer): Body<V>
 		local out = setmetatable(
 			{
 				_contentType = "application/octet-stream",

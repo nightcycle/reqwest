@@ -16,7 +16,7 @@ type HeaderValue = Response.HeaderValue
 type Request = Request.Request
 type RequestBuilder = Request.RequestBuilder
 type Method = Request.Method
-type Response = Response.Response
+type Response<V> = Response.Response<V>
 type Option<V> = Option.Option<V>
 type Result<V, E> = Result.Result<V, E>
 type Future<V> = Future.Future<V>
@@ -35,7 +35,7 @@ type ClientImpl = {
 	delete: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
 	patch: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
 	request: (self: any, method: Method, url: TryFromUrl | Url) -> RequestBuilder,
-	execute: (self: any, request: Request) -> Future<Result<Result<Response, Response>, string>>,
+	execute: <V, E>(self: any, request: Request) -> Future<Result<Result<Response<V>, Response<E>>, string>>,
 }
 
 export type Client = ClientImpl --typeof(setmetatable({}, {} :: ClientImpl))
@@ -152,7 +152,7 @@ function Client:request(method: Method, url: TryFromUrl | Url): RequestBuilder
 	return newRequestBuilder(self, method, url) :: any
 end
 
-function Client:execute(request: Request): Future<Result<Result<Response, Response>, string>>
+function Client:execute<V, E>(request: Request): Future<Result<Result<Response<V>, Response<E>>, string>>
 	local req: any = request
 	return req:send()
 end
