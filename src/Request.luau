@@ -51,7 +51,7 @@ type RequestImpl = {
 	__index: RequestImpl,
 	__tostring: (self: any) -> string,
 	builder: (self: Request) -> RequestBuilder,
-	send: (self: Request) -> Future<Result<Result<Response, Response>, string>>,
+	send: (self: Request) -> Future<Result<Response, Response>>,
 }
 export type Request = RequestImpl & {
 	method: Method,
@@ -111,53 +111,51 @@ function Request:builder(): RequestBuilder
 	return out :: any
 end
 
-function Request:send(): Future<Result<Result<Response, Response>, string>>
+function Request:send(): Future<Result<Response, Response>>
 	return Future.from(function(): any
-		return Result.try(function()
-			local req: RequestStruct = self :: any
-			local url = req._query:match(function(query): string
-				return tostring(req.url:query(query))
-			end, function(): string
-				return tostring(req.url)
-			end)
-			local body: string? = req._body:match(function(out): string?
-				return out:asText():expect(`failed to convert body to string`)
-			end, function()
-				return nil
-			end)
-
-			local headers: { [HeaderKey]: HeaderValue } = req._headers:match(
-				function(map: HeaderMap): { [HeaderKey]: HeaderValue }
-					return map:drain()
-				end,
-				function()
-					return {}
-				end
-			)
-
-			local isGZip = headers["Accept-Encoding"] == "gzip"
-			if isGZip then
-				headers["Accept-Encoding"] = nil
-			end
-
-			local fetchResponse: LuneUtil.FetchResponse = LuneUtil.Net.request({
-				url = url,
-				method = req.method :: any,
-				headers = headers :: any,
-				body = body,
-				options = {
-					decompress = isGZip,
-				},
-			})
-
-			local response = Response.new(req.url, fetchResponse)
-
-			if fetchResponse.ok then
-				return Result.ok(response)
-			else
-				return Result.err(response)
-			end
+		local req: RequestStruct = self :: any
+		local url = req._query:match(function(query): string
+			return tostring(req.url:query(query))
+		end, function(): string
+			return tostring(req.url)
 		end)
+		local body: string? = req._body:match(function(out): string?
+			return out:asText():expect(`failed to convert body to string`)
+		end, function()
+			return nil
+		end)
+
+		local headers: { [HeaderKey]: HeaderValue } = req._headers:match(
+			function(map: HeaderMap): { [HeaderKey]: HeaderValue }
+				return map:drain()
+			end,
+			function()
+				return {}
+			end
+		)
+
+		local isGZip = headers["Accept-Encoding"] == "gzip"
+		if isGZip then
+			headers["Accept-Encoding"] = nil
+		end
+
+		local fetchResponse: LuneUtil.FetchResponse = LuneUtil.Net.request({
+			url = url,
+			method = req.method :: any,
+			headers = headers :: any,
+			body = body,
+			options = {
+				decompress = isGZip,
+			},
+		})
+
+		local response = Response.new(req.url, fetchResponse)
+
+		if fetchResponse.ok then
+			return Result.ok(response)
+		else
+			return Result.err(response)
+		end
 	end)
 end
 
