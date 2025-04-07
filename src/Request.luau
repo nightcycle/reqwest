@@ -121,7 +121,7 @@ function Request:send(): Future<Result<Result<Response, Response>, string>>
 				return tostring(req.url)
 			end)
 			local body: string? = req._body:match(function(out): string?
-				return tostring(out)
+				return out:asText():expect(`failed to convert body to string`)
 			end, function()
 				return nil
 			end)

@@ -34,7 +34,7 @@ local Body = {} :: BodyImpl
 Body.__index = Body
 
 function Body:__tostring(): string
-	return "Body<{" .. `"type": "{self._contentType}", "length": {self:asText():unwrapErr():len()}` .. "}>"
+	return "Body<{" .. `"type": "{self._contentType}", "length": {self:asText():unwrap():len()}` .. "}>"
 end
 
 function Body:asBytes(): Result<buffer, EncodingError>
