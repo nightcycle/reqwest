@@ -20,8 +20,7 @@ type Response = Response.Response
 type Option<V> = Option.Option<V>
 type Result<V, E> = Result.Result<V, E>
 type Future<V> = Future.Future<V>
-
-export type ClientStruct = {
+type ClientStruct = {
 	_userAgent: Option<HeaderValue>,
 	_defaultHeaders: Option<HeaderMap>,
 	_gzip: Option<boolean>,
@@ -38,7 +37,7 @@ type ClientImpl = {
 	execute: (self: any, request: Request) -> Future<Result<Result<Response, Response>, string>>,
 }
 
-export type Client = typeof(setmetatable({}, {} :: ClientImpl))
+export type Client = ClientImpl --typeof(setmetatable({}, {} :: ClientImpl))
 
 type ClientBuilderImpl = {
 	__index: ClientBuilderImpl,

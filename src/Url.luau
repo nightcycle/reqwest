@@ -22,7 +22,7 @@ type UrlStruct = {
 	_query: HashMap<string, string>,
 }
 
-export type Url = typeof(setmetatable({}, {} :: UrlImpl))
+export type Url = UrlImpl -- typeof(setmetatable({}, {} :: UrlImpl))
 
 -- Constants
 -- Variables
@@ -33,10 +33,12 @@ local Url = {} :: UrlImpl
 Url.__index = Url
 
 function newUrl(source: TryFromUrl, query: HashMap<string, string>): Url
-	return setmetatable({
+	local out = setmetatable({
 		_source = source,
 		_query = query,
 	}, Url)
+	table.freeze(out)
+	return out :: any
 end
 
 function Url:domain(): string

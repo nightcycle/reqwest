@@ -44,7 +44,7 @@ type RequestStruct = {
 	_body: Option<Body>,
 	_headers: Option<HeaderMap>,
 }
-export type RequestBuilder = typeof(setmetatable({}, {} :: RequestBuilderImpl))
+export type RequestBuilder = RequestBuilderImpl -- typeof(setmetatable({}, {} :: RequestBuilderImpl))
 export type Method = "GET" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH" -- limited by lune support
 
 type RequestImpl = {
@@ -88,7 +88,7 @@ function Request:builder(): RequestBuilder
 	local builder: RequestStruct = table.clone(self :: any)
 	local out = setmetatable(builder, RequestBuilder)
 	table.freeze(out)
-	return out
+	return out :: any
 end
 
 function Request:send(): Future<Result<Result<Response, Response>, string>>
@@ -204,11 +204,12 @@ function RequestBuilder:basicAuth(username: string, password: string): RequestBu
 	return self:header("Authorization", "Basic " .. EncodeUtil.Base64.encode(username .. ":" .. password))
 end
 
-function RequestBuilder:bearerAuth(token: string | Secret): RequestBuilder
+function RequestBuilder:bearerAuth(token: HeaderValue): RequestBuilder
 	if typeof(token) == "string" then
-		return self:header("Authorization", "Bearer " .. token)
+		return self:header("Authorization", ("Bearer " .. token) :: HeaderValue) :: RequestBuilder
 	else
-		return self:header("Authorization", token:AddPrefix("Bearer "))
+		local sec: HeaderValue = token:AddPrefix("Bearer ")
+		return self:header("Authorization", sec) :: RequestBuilder
 	end
 end
 
