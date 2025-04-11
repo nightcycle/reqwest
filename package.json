@@ -21,6 +21,10 @@
 		"@nightcycle/hash-map": "^0",
 		"@nightcycle/lune-util": "^0"
 	},
+	"publishConfig": {
+		"registry": "https://registry.npmjs.org/",
+		"access": "public"
+	},
 	"devDependencies": {
 		"npmluau": "^0.1.1"
 	},
