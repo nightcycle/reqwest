@@ -123,7 +123,7 @@ function Response:json<V>(): Result<Json & V, DecodingError>
 	end
 end
 
-function Response:bytes<V>(): Result<buffer, DecodingError>
+function Response:bytes(): Result<buffer, DecodingError>
 	local result = Result.try(function()
 		return buffer.fromstring(self._fetchResponse.body)
 	end)
