@@ -146,7 +146,7 @@ function Response:headers(): HeaderMap
 	for key, value in pairs(self._fetchResponse.headers) do
 		headers:insert(key, value)
 	end
-	return headers
+	return headers:freeze()
 end
 
 function Response:contentLength(): Option<number>

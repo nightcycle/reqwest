@@ -236,11 +236,11 @@ function RequestBuilder:header(key: HeaderKey, value: HeaderValue): RequestBuild
 		Option.some(self._headers:match(function(old: HeaderMap): HeaderMap
 			local headers = old:asMut()
 			local _ = headers:insert(key, value)
-			return headers
+			return headers:freeze()
 		end, function(): HeaderMap
 			local headers = HashMap.emptyMut()
 			headers:insert(key, value)
-			return headers
+			return headers:freeze()
 		end)) :: any
 	):builder() :: any
 end
