@@ -12,10 +12,10 @@ local Body = require("./Body")
 local Response = require("./Response")
 local EncodeUtil = require("./EncodeUtil")
 -- Types
+type PotentialSecret = Url.PotentialSecret
 type HashMap<K, V> = HashMap.HashMap<K, V>
 type HeaderMap = Response.HeaderMap
 type Url = Url.Url
-type TryFromUrl = Url.TryFromUrl
 type HeaderValue = Response.HeaderValue
 type HeaderKey = Response.HeaderKey
 type Option<V> = Option.Option<V>
@@ -28,19 +28,19 @@ type RequestBuilderImpl = {
 	__index: RequestBuilderImpl,
 	__tostring: (self: any) -> string,
 	basicAuth: (self: any, username: string, password: string) -> RequestBuilder,
-	bearerAuth: (self: any, token: string | Secret) -> RequestBuilder,
+	bearerAuth: (self: any, token: PotentialSecret) -> RequestBuilder,
 	body: <V>(self: any, body: Body<V>) -> RequestBuilder,
 	build: (self: any) -> Request,
 	header: (self: any, key: HeaderKey, value: HeaderValue) -> RequestBuilder,
 	headers: (self: any, headers: HeaderMap) -> RequestBuilder,
-	query: (self: any, query: HashMap<string, string>) -> RequestBuilder,
+	query: (self: any, query: HashMap<PotentialSecret, PotentialSecret>) -> RequestBuilder,
 	json: (self: any) -> RequestBuilder,
 }
 type Response<V> = Response.Response<V>
 type RequestStruct = {
 	method: Method,
 	url: Url,
-	_query: Option<HashMap<string, string>>,
+	_query: Option<HashMap<PotentialSecret, PotentialSecret>>,
 	_body: Option<Body<any>>,
 	_headers: Option<HeaderMap>,
 }
@@ -88,14 +88,14 @@ end
 
 function newRequest<V>(
 	method: Method,
-	url: Url | TryFromUrl,
-	query: Option<HashMap<string, string>>,
+	url: Url | PotentialSecret,
+	query: Option<HashMap<PotentialSecret, PotentialSecret>>,
 	body: Option<V>,
 	headers: Option<HeaderMap>
 ): Request
 	local self = setmetatable({
 		method = method,
-		url = if typeof(url) == "table" then url else Url.tryFrom(url):unwrap() :: Url,
+		url = if Url.isUrl(url) then url else Url.tryFrom(url :: PotentialSecret):unwrap() :: Url,
 		_query = query,
 		_body = body,
 		_headers = headers,
@@ -114,10 +114,10 @@ end
 function Request:send<V, E>(): Future<Result<Response<V>, Response<E>>>
 	return Future.from(function(): any
 		local req: RequestStruct = self :: any
-		local url = req._query:match(function(query): string
-			return tostring(req.url:query(query))
-		end, function(): string
-			return tostring(req.url)
+		local url: any = req._query:match(function(query): PotentialSecret
+			return req.url:query(query):display() :: PotentialSecret
+		end, function(): PotentialSecret
+			return req.url:display() :: PotentialSecret
 		end)
 		local body: string? = req._body:match(function(out): string?
 			return out:asText():expect(`failed to convert body to string`)
@@ -125,9 +125,37 @@ function Request:send<V, E>(): Future<Result<Response<V>, Response<E>>>
 			return nil
 		end)
 
-		local headers: { [HeaderKey]: HeaderValue } = req._headers:match(
+		local headers: { [any]: any } = req._headers:match(
 			function(map: HeaderMap): { [HeaderKey]: HeaderValue }
-				return map:drain()
+				local baseHeaders = map:drain()
+
+				local finalHeaders: { [string | Secret]: string | Secret } = {}
+				for key, value in pairs(baseHeaders) do
+					local finalKey: Option<string | Secret> = Option.none()
+					if typeof(key) == "string" then
+						finalKey = Option.some(key :: string | Secret)
+					else
+						if typeof(key) == "Secret" then
+							finalKey = Option.some(key :: string | Secret)
+						else
+							finalKey = Option.some(key:Build() :: string | Secret)
+						end
+					end
+					local finalValue: Option<string | Secret> = Option.none()
+					if typeof(value) == "string" then
+						finalValue = Option.some(value :: string | Secret)
+					else
+						if typeof(value) == "Secret" then
+							finalValue = Option.some(value :: string | Secret)
+						else
+							finalValue = Option.some(value:Build() :: string | Secret)
+						end
+					end
+
+					finalHeaders[finalKey:expect("bad header key")] = finalValue:expect("bad header value")
+				end
+
+				return finalHeaders
 			end,
 			function()
 				return {}
@@ -179,7 +207,7 @@ function RequestBuilder:body<V>(body: Body<any>): RequestBuilder
 	):builder() :: any
 end
 
-function RequestBuilder:query(query: HashMap<string, string>): RequestBuilder
+function RequestBuilder:query(query: HashMap<PotentialSecret, PotentialSecret>): RequestBuilder
 	return (newRequest(
 		self.method :: any,
 		self.url :: any,
@@ -226,8 +254,14 @@ function RequestBuilder:bearerAuth(token: HeaderValue): RequestBuilder
 	if typeof(token) == "string" then
 		return self:header("Authorization", ("Bearer " .. token) :: HeaderValue) :: RequestBuilder
 	else
-		local sec: HeaderValue = token:AddPrefix("Bearer ")
-		return self:header("Authorization", sec) :: RequestBuilder
+		local sec: Option<HeaderValue> = Option.none()
+		if typeof(token) == "table" then
+			sec = Option.some(token:AddPrefix("Bearer ") :: HeaderValue)
+		else
+			sec = Option.some(token:AddPrefix("Bearer ") :: HeaderValue)
+		end
+
+		return self:header("Authorization", sec:expect(`bad token`)) :: RequestBuilder
 	end
 end
 
@@ -236,7 +270,7 @@ function RequestBuilder:json()
 end
 
 return {
-	new = function(method: Method, url: Url | TryFromUrl): RequestBuilder
+	new = function(method: Method, url: Url | PotentialSecret): RequestBuilder
 		return newRequest(method :: any, url :: any, Option.none(), Option.none(), Option.none()):builder() :: any
 	end,
 }

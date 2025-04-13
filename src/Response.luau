@@ -12,9 +12,10 @@ local HashMap = require("@pkg/@nightcycle/hash-map")
 local Body = require("./Body")
 local Url = require("./Url")
 -- Types
+type PotentialSecret = Url.PotentialSecret
 type HashMap<K, V> = HashMap.HashMap<K, V>
-export type HeaderValue = Secret | string
-export type HeaderKey = Secret | string
+export type HeaderValue = PotentialSecret
+export type HeaderKey = PotentialSecret
 export type HeaderMap = HashMap<HeaderKey, HeaderValue>
 
 type Body<V> = Body.Body<V>

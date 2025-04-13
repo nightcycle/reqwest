@@ -4,6 +4,8 @@
 local Option = require("@pkg/@nightcycle/option")
 local Result = require("@pkg/@nightcycle/result")
 local Future = require("@pkg/@nightcycle/future")
+local HashMap = require("@pkg/@nightcycle/hash-map")
+
 -- Modules
 local Request = require("./Request")
 local Response = require("./Response")
@@ -11,8 +13,10 @@ local Url = require("./Url")
 -- Types
 type HeaderMap = Response.HeaderMap
 type Url = Url.Url
-type TryFromUrl = Url.TryFromUrl
+type PotentialSecret = Url.PotentialSecret
 type HeaderValue = Response.HeaderValue
+type HeaderKey = Response.HeaderKey
+
 type Request = Request.Request
 type RequestBuilder = Request.RequestBuilder
 type Method = Request.Method
@@ -29,12 +33,12 @@ type ClientImpl = {
 	__index: ClientImpl,
 	__tostring: (self: any) -> string,
 	builder: (self: any) -> ClientBuilder,
-	get: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
-	post: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
-	put: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
-	delete: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
-	patch: (self: any, url: TryFromUrl | Url) -> RequestBuilder,
-	request: (self: any, method: Method, url: TryFromUrl | Url) -> RequestBuilder,
+	get: (self: any, url: PotentialSecret | Url) -> RequestBuilder,
+	post: (self: any, url: PotentialSecret | Url) -> RequestBuilder,
+	put: (self: any, url: PotentialSecret | Url) -> RequestBuilder,
+	delete: (self: any, url: PotentialSecret | Url) -> RequestBuilder,
+	patch: (self: any, url: PotentialSecret | Url) -> RequestBuilder,
+	request: (self: any, method: Method, url: PotentialSecret | Url) -> RequestBuilder,
 	execute: <V, E>(self: any, request: Request) -> Future<Result<Result<Response<V>, Response<E>>, string>>,
 }
 
@@ -46,6 +50,7 @@ type ClientBuilderImpl = {
 	build: (self: any) -> Client,
 	userAgent: (self: any, userAgent: HeaderValue | HeaderValue) -> ClientBuilder,
 	defaultHeaders: (self: any, headers: HeaderMap) -> ClientBuilder,
+	header: (self: any, key: HeaderKey, value: HeaderValue) -> ClientBuilder,
 	gzip: (self: any, enabled: boolean) -> ClientBuilder,
 }
 export type ClientBuilder = ClientBuilderImpl --typeof(setmetatable({}, {} :: ClientBuilderImpl))
@@ -54,7 +59,7 @@ export type ClientBuilder = ClientBuilderImpl --typeof(setmetatable({}, {} :: Cl
 -- Variables
 -- References
 -- Private Functions
-function newRequestBuilder(client: any, method: Method, url: TryFromUrl | Url): RequestBuilder
+function newRequestBuilder(client: any, method: Method, url: PotentialSecret | Url): RequestBuilder
 	local out = Request.new(method, url)
 
 	out = client._defaultHeaders:match(function(headers)
@@ -128,27 +133,27 @@ function newBuilder(client: Client): ClientBuilder
 	return self :: any
 end
 
-function Client:get(url: TryFromUrl | Url): RequestBuilder
+function Client:get(url: PotentialSecret | Url): RequestBuilder
 	return newRequestBuilder(self, "GET", url) :: any
 end
 
-function Client:post(url: TryFromUrl | Url): RequestBuilder
+function Client:post(url: PotentialSecret | Url): RequestBuilder
 	return newRequestBuilder(self, "POST", url) :: any
 end
 
-function Client:put(url: TryFromUrl | Url): RequestBuilder
+function Client:put(url: PotentialSecret | Url): RequestBuilder
 	return newRequestBuilder(self, "PUT", url) :: any
 end
 
-function Client:delete(url: TryFromUrl | Url): RequestBuilder
+function Client:delete(url: PotentialSecret | Url): RequestBuilder
 	return newRequestBuilder(self, "DELETE", url) :: any
 end
 
-function Client:patch(url: TryFromUrl | Url): RequestBuilder
+function Client:patch(url: PotentialSecret | Url): RequestBuilder
 	return newRequestBuilder(self, "PATCH", url) :: any
 end
 
-function Client:request(method: Method, url: TryFromUrl | Url): RequestBuilder
+function Client:request(method: Method, url: PotentialSecret | Url): RequestBuilder
 	return newRequestBuilder(self, method, url) :: any
 end
 
@@ -167,6 +172,23 @@ end
 
 function ClientBuilder:defaultHeaders(headers: HeaderMap): ClientBuilder
 	return newClient(self._userAgent, Option.some(headers), self._gzip):builder() :: any
+end
+
+function ClientBuilder:header(key: HeaderKey, value: HeaderValue): ClientBuilder
+	return newClient(
+		self._userAgent,
+		self._headers:match(function(map): Option<HeaderMap>
+			local newMap = HashMap.fromMut(map:drain())
+			newMap:insert(key, value)
+			return Option.some(newMap:freeze())
+		end, function()
+			local newMap = HashMap.from({
+				[key] = value,
+			})
+			return Option.some(newMap)
+		end),
+		self._gzip
+	):builder() :: any
 end
 
 function ClientBuilder:userAgent(userAgent: HeaderValue): ClientBuilder

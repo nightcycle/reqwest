@@ -19,7 +19,7 @@ export type Response<V> = Response.Response<V>
 export type Client = Client.Client
 export type ClientBuilder = Client.ClientBuilder
 export type Url = Url.Url
-export type TryFromUrl = Url.TryFromUrl
+export type PotentialSecret = Url.PotentialSecret
 export type ContentType = Body.ContentType
 -- Constants
 -- Variables
