@@ -114,10 +114,18 @@ end
 function Request:send<V, E>(): Future<Result<Response<V>, Response<E>>>
 	return Future.from(function(): any
 		local req: RequestStruct = self :: any
-		local url: any = req._query:match(function(query): PotentialSecret
-			return req.url:query(query):display() :: PotentialSecret
-		end, function(): PotentialSecret
-			return req.url:display() :: PotentialSecret
+		local url: string | Secret = req._query:match(function(query): string | Secret
+			local out = req.url:query(query):display() :: PotentialSecret
+			if typeof(out) == "table" then
+				return out:Build() :: string | Secret
+			end
+			return out
+		end, function(): string | Secret
+			local out = req.url:display() :: PotentialSecret
+			if typeof(out) == "table" then
+				return out:Build() :: string | Secret
+			end
+			return out
 		end)
 		local body: string? = req._body:match(function(out): string?
 			return out:asText():expect(`failed to convert body to string`)
@@ -168,7 +176,7 @@ function Request:send<V, E>(): Future<Result<Response<V>, Response<E>>>
 		end
 
 		local fetchResponse: LuneUtil.FetchResponse = LuneUtil.Net.request({
-			url = url,
+			url = url :: any,
 			method = req.method :: any,
 			headers = headers :: any,
 			body = body,
