@@ -150,7 +150,7 @@ function Url:display(): PotentialSecret
 	else
 		local queryParts: { string } = {}
 		for key, value in pairs(self._query:drain()) do
-			table.insert(queryParts, ("%s=%s"):format(key, value))
+			table.insert(queryParts, `{key}={value}`)
 		end
 		local query = table.concat(queryParts, "&")
 		return self._source .. if #queryParts > 0 then "?" .. query else ""
