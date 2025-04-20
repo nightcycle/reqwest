@@ -105,11 +105,11 @@ function Response:__tostring(): string
 		.. "}>"
 end
 
-function Response:text<V>(): Result<V & string, DecodingError>
-	return Result.ok(self._fetchResponse.body)
+function Response:text()
+	return Result.ok(self._fetchResponse.body) :: any
 end
 
-function Response:json<V>(): Result<Json & V, DecodingError>
+function Response:json()
 	local result = Result.try(function()
 		return LuneUtil.Net.jsonDecode(self._fetchResponse.body)
 	end)
@@ -121,12 +121,12 @@ function Response:json<V>(): Result<Json & V, DecodingError>
 				:body(self :: any)
 				:description(result:unwrapErr())
 				:title("JSON Decoding Error")
-				:build() :: Error<any, ResponseStruct>
+				:build() :: Error<any, any>
 		)
 	end
 end
 
-function Response:form<V>(): Result<V & Form, DecodingError>
+function Response:form()
 	local body = Body.fromText(self._fetchResponse.body)
 	return body:asForm():match(function(v)
 		return Result.ok(v)
@@ -138,12 +138,12 @@ function Response:form<V>(): Result<V & Form, DecodingError>
 					e.Description:unwrapOr(`Error decoding text "{self._fetchResponse.body}" into form`)
 				)
 				:title("Form Decoding Error")
-				:build() :: Error<any, ResponseStruct>
+				:build() :: Error<any, any>
 		)
 	end)
 end
 
-function Response:bytes(): Result<buffer, DecodingError>
+function Response:bytes()
 	local result = Result.try(function()
 		return buffer.fromstring(self._fetchResponse.body)
 	end)

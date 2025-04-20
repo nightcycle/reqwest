@@ -27,16 +27,6 @@ export type ContentType = Body.ContentType
 -- References
 -- Private Functions
 
-Client.new()
-	:build()
-	:post("test")
-	:body(Body.fromForm({
-		A = 1,
-		B = 2,
-		C = "3",
-	}))
-	:build()
-
 -- Class
 return {
 	Body = Body,
