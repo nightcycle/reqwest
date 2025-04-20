@@ -20,6 +20,7 @@ export type HeaderMap = HashMap<HeaderKey, HeaderValue>
 
 type Body<V> = Body.Body<V>
 type Json = Body.Json
+type Form = Body.Form
 type Url = Url.Url
 type Option<V> = Option.Option<V>
 type Result<V, E> = Result.Result<V, E>
@@ -31,6 +32,7 @@ type ResponseImpl<V> = {
 	__tostring: (self: any) -> string,
 	text: (self: any) -> Result<string, DecodingError>,
 	json: <V>(self: any) -> Result<Json & V, DecodingError>,
+	form: <V>(self: any) -> Result<Form & V, DecodingError>,
 	bytes: (self: any) -> Result<buffer, DecodingError>,
 	headers: (self: any) -> HeaderMap,
 	contentLength: (self: any) -> Option<number>,
@@ -122,6 +124,23 @@ function Response:json<V>(): Result<Json & V, DecodingError>
 				:build() :: Error<any, ResponseStruct>
 		)
 	end
+end
+
+function Response:form<V>(): Result<Form & V, DecodingError>
+	local body = Body.fromText(self._fetchResponse.body)
+	return body:asForm():match(function(v)
+		return Result.ok(v)
+	end, function(e)
+		return Result.err(
+			Error.new("DecodingError")
+				:body(self :: any)
+				:description(
+					e.Description:unwrapOr(`Error decoding text "{self._fetchResponse.body}" into form`)
+				)
+				:title("Form Decoding Error")
+				:build() :: Error<any, ResponseStruct>
+		)
+	end)
 end
 
 function Response:bytes(): Result<buffer, DecodingError>
