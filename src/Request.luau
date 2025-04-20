@@ -29,7 +29,7 @@ type RequestBuilderImpl = {
 	__tostring: (self: any) -> string,
 	basicAuth: (self: any, username: string, password: string) -> RequestBuilder,
 	bearerAuth: (self: any, token: PotentialSecret) -> RequestBuilder,
-	body: <V>(self: any, body: Body<V>) -> RequestBuilder,
+	body: (self: any, body: Body<any>) -> RequestBuilder,
 	build: (self: any) -> Request,
 	header: (self: any, key: HeaderKey, value: HeaderValue) -> RequestBuilder,
 	headers: (self: any, headers: HeaderMap) -> RequestBuilder,
@@ -111,7 +111,7 @@ function Request:builder(): RequestBuilder
 	return out :: any
 end
 
-function Request:send<V, E>(): Future<Result<Response<V>, Response<E>>>
+function Request:send<V, E>(): any
 	return Future.from(function(): any
 		local req: RequestStruct = self :: any
 		local url: string | Secret = req._query:match(function(query): string | Secret
@@ -205,7 +205,7 @@ function RequestBuilder:build(): Request
 	) :: any
 end
 
-function RequestBuilder:body<V>(body: Body<any>): RequestBuilder
+function RequestBuilder:body(body: Body<any>): RequestBuilder
 	return newRequest(
 		self.method :: any,
 		self.url :: any,

@@ -30,9 +30,9 @@ type DecodingError = Error<"DecodingError", ResponseStruct>
 type ResponseImpl<V> = {
 	__index: ResponseImpl<V>,
 	__tostring: (self: any) -> string,
-	text: (self: any) -> Result<string, DecodingError>,
-	json: <V>(self: any) -> Result<Json & V, DecodingError>,
-	form: (self: any) -> Result<Form, DecodingError>,
+	text: (self: any) -> Result<string & V, DecodingError>,
+	json: (self: any) -> Result<Json & V, DecodingError>,
+	form: (self: any) -> Result<Form & V, DecodingError>,
 	bytes: (self: any) -> Result<buffer, DecodingError>,
 	headers: (self: any) -> HeaderMap,
 	contentLength: (self: any) -> Option<number>,
@@ -105,7 +105,7 @@ function Response:__tostring(): string
 		.. "}>"
 end
 
-function Response:text(): Result<string, DecodingError>
+function Response:text<V>(): Result<V & string, DecodingError>
 	return Result.ok(self._fetchResponse.body)
 end
 
@@ -126,7 +126,7 @@ function Response:json<V>(): Result<Json & V, DecodingError>
 	end
 end
 
-function Response:form(): Result<Form, DecodingError>
+function Response:form<V>(): Result<V & Form, DecodingError>
 	local body = Body.fromText(self._fetchResponse.body)
 	return body:asForm():match(function(v)
 		return Result.ok(v)

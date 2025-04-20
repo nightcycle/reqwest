@@ -18,7 +18,10 @@ type UrlImpl = {
 	display: (self: any) -> PotentialSecret,
 	path: (self: any) -> string,
 	domain: (self: any) -> string,
-	query: (self: any, query: HashMap<PotentialSecret, PotentialSecret>) -> Url,
+	query: (
+		self: any,
+		query: HashMap<PotentialSecret, PotentialSecret> | { [PotentialSecret]: PotentialSecret }
+	) -> Url,
 }
 type UrlStruct = {
 	_source: PotentialSecret,
@@ -161,8 +164,8 @@ function Url:__tostring(): string
 	return "Url<{" .. `"source": "{tostring(self._source)}", "query": "{tostring(self._query)}"` .. "}>"
 end
 
-function Url:query(query: HashMap<PotentialSecret, PotentialSecret>)
-	return newUrl(self._source, query)
+function Url:query(query: HashMap<PotentialSecret, PotentialSecret> | { [PotentialSecret]: PotentialSecret })
+	return newUrl(self._source, if HashMap.isHashMap(query) then query :: any else HashMap.from(query))
 end
 
 return {

@@ -24,9 +24,9 @@ type BodyImpl<V> = {
 	__index: BodyImpl<V>,
 	__tostring: (self: any) -> string,
 	asBytes: (self: any) -> Result<buffer, EncodingError>,
-	asText: (self: any) -> Result<string, EncodingError>,
+	asText: (self: any) -> Result<V & string, EncodingError>,
 	asJson: (self: any) -> Result<V & Json, EncodingError>,
-	asForm: (self: any) -> Result<Form, EncodingError>,
+	asForm: (self: any) -> Result<V & Form, EncodingError>,
 }
 type BodyStruct = {
 	_contentType: ContentType,
@@ -230,11 +230,11 @@ function Body:asForm(): Result<Form, EncodingError>
 end
 
 return {
-	fromForm = function(content: Form): Body<Form>
+	fromForm = function<V>(content: Form | { [string]: boolean | string | number }): Body<V>
 		local out = setmetatable(
 			{
 				_contentType = "application/x-www-form-urlencoded",
-				_content = content,
+				_content = if HashMap.isHashMap(content) then content else HashMap.from(content),
 			} :: BodyStruct,
 			Body
 		)
