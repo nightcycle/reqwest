@@ -12,6 +12,7 @@ local Client = require("./Client")
 export type HeaderMap = Response.HeaderMap
 export type Body<V> = Body.Body<V>
 export type Json = Body.Json
+export type Form = Body.Form
 export type Request = Request.Request
 export type RequestBuilder = Request.RequestBuilder
 export type Method = Request.Method
