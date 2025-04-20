@@ -230,7 +230,7 @@ function Body:asForm(): Result<Form, EncodingError>
 end
 
 return {
-	fromForm = function<V>(content: Form): Body<V>
+	fromForm = function(content: Form): Body<Form>
 		local out = setmetatable(
 			{
 				_contentType = "application/x-www-form-urlencoded",

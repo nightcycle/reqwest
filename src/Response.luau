@@ -32,7 +32,7 @@ type ResponseImpl<V> = {
 	__tostring: (self: any) -> string,
 	text: (self: any) -> Result<string, DecodingError>,
 	json: <V>(self: any) -> Result<Json & V, DecodingError>,
-	form: <V>(self: any) -> Result<Form & V, DecodingError>,
+	form: (self: any) -> Result<Form, DecodingError>,
 	bytes: (self: any) -> Result<buffer, DecodingError>,
 	headers: (self: any) -> HeaderMap,
 	contentLength: (self: any) -> Option<number>,
@@ -126,7 +126,7 @@ function Response:json<V>(): Result<Json & V, DecodingError>
 	end
 end
 
-function Response:form<V>(): Result<Form & V, DecodingError>
+function Response:form(): Result<Form, DecodingError>
 	local body = Body.fromText(self._fetchResponse.body)
 	return body:asForm():match(function(v)
 		return Result.ok(v)
