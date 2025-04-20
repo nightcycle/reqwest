@@ -34,6 +34,7 @@ type ResponseImpl<V> = {
 	json: (self: any) -> Result<Json & V, DecodingError>,
 	form: (self: any) -> Result<Form & V, DecodingError>,
 	bytes: (self: any) -> Result<buffer, DecodingError>,
+	ok: (self: any) -> boolean,
 	headers: (self: any) -> HeaderMap,
 	contentLength: (self: any) -> Option<number>,
 	status: (self: any) -> number,
@@ -136,6 +137,10 @@ ResponseBuilder.__index = ResponseBuilder
 local Response = {} :: ResponseImpl<any>
 Response.__index = Response
 
+function Response:ok(): boolean
+	return self._statusCode >= 200 and self._statusCode < 300
+end
+
 function Response:__tostring(): string
 	return "Response<{"
 		.. `"url": "{self._url}", "body": {self._body},`
@@ -144,7 +149,17 @@ function Response:__tostring(): string
 end
 
 function Response:text()
-	return Result.ok(self._fetchResponse.body) :: any
+	return self._body:asText():match(function(v)
+		return Result.ok(v)
+	end, function(e)
+		return Result.err(
+			Error.new("DecodingError")
+				:body(self :: any)
+				:description(e.Description:unwrapOr(`Error decoding "{self._body}" into text`))
+				:title("Text Decoding Error")
+				:build() :: Error<any, any>
+		)
+	end)
 end
 
 function Response:json()
@@ -154,9 +169,7 @@ function Response:json()
 		return Result.err(
 			Error.new("DecodingError")
 				:body(self :: any)
-				:description(
-					e.Description:unwrapOr(`Error decoding text "{self._fetchResponse.body}" into json`)
-				)
+				:description(e.Description:unwrapOr(`Error decoding "{self._body}" into json`))
 				:title("JSON Decoding Error")
 				:build() :: Error<any, any>
 		)
@@ -178,9 +191,7 @@ function Response:form()
 		return Result.err(
 			Error.new("DecodingError")
 				:body(self :: any)
-				:description(
-					e.Description:unwrapOr(`Error decoding text "{self._fetchResponse.body}" into form`)
-				)
+				:description(e.Description:unwrapOr(`Error decoding "{self._body}" into form`))
 				:title("Form Decoding Error")
 				:build() :: Error<any, any>
 		)
@@ -188,20 +199,17 @@ function Response:form()
 end
 
 function Response:bytes()
-	local result = Result.try(function()
-		return buffer.fromstring(self._fetchResponse.body)
-	end)
-	if result:isOk() then
-		return Result.ok(result:unwrap())
-	else
+	return self._body:asBytes():match(function(v)
+		return Result.ok(v)
+	end, function(e)
 		return Result.err(
 			Error.new("DecodingError")
 				:body(self :: any)
-				:description(result:unwrapErr())
-				:title("JSON Decoding Error")
-				:build() :: Error<any, ResponseStruct>
+				:description(e.Description:unwrapOr(`Error decoding "{self._body}" into bytes`))
+				:title("Byte Decoding Error")
+				:build() :: Error<any, any>
 		)
-	end
+	end)
 end
 
 function Response:headers(): HeaderMap
