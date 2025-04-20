@@ -26,7 +26,7 @@ type BodyImpl<V> = {
 	asBytes: (self: any) -> Result<buffer, EncodingError>,
 	asText: (self: any) -> Result<string, EncodingError>,
 	asJson: (self: any) -> Result<V & Json, EncodingError>,
-	asForm: (self: any) -> Result<V & Form, EncodingError>,
+	asForm: (self: any) -> Result<Form, EncodingError>,
 }
 type BodyStruct = {
 	_contentType: ContentType,
