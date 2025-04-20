@@ -93,7 +93,7 @@ function Body:asText(): Result<string, EncodingError>
 				elseif type(v) == "boolean" then
 					txt = txt .. k .. "=" .. tostring(v)
 				end
-				if count < #form then
+				if count < form:len() then
 					txt = txt .. "&"
 				end
 			end
