@@ -19,7 +19,8 @@
 		"@nightcycle/error": "^0",
 		"@nightcycle/vec": "^0",
 		"@nightcycle/hash-map": "^0",
-		"@nightcycle/lune-util": "^0"
+		"@nightcycle/lune-util": "^0",
+		"@nightcycle/hashlib": "1.0.4"
 	},
 	"publishConfig": {
 		"registry": "https://registry.npmjs.org/",

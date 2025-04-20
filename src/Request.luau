@@ -6,11 +6,11 @@ local Option = require("@pkg/@nightcycle/option")
 local Result = require("@pkg/@nightcycle/result")
 local Future = require("@pkg/@nightcycle/future")
 local HashMap = require("@pkg/@nightcycle/hash-map")
+local HashLib = require("@pkg/@nightcycle/hashlib")
 -- Modules
 local Url = require("./Url")
 local Body = require("./Body")
 local Response = require("./Response")
-local EncodeUtil = require("./EncodeUtil")
 -- Types
 type PotentialSecret = Url.PotentialSecret
 type HashMap<K, V> = HashMap.HashMap<K, V>
@@ -255,7 +255,7 @@ end
 
 -- has to be a string because you can't b64 encode a secret
 function RequestBuilder:basicAuth(username: string, password: string): RequestBuilder
-	return self:header("Authorization", "Basic " .. EncodeUtil.Base64.encode(username .. ":" .. password))
+	return self:header("Authorization", "Basic " .. HashLib.base64_encode(username .. ":" .. password))
 end
 
 function RequestBuilder:bearerAuth(token: HeaderValue): RequestBuilder
