@@ -37,12 +37,30 @@ type ResponseImpl<V> = {
 	headers: (self: any) -> HeaderMap,
 	contentLength: (self: any) -> Option<number>,
 	status: (self: any) -> number,
+	statusMessage: (self: any) -> string,
 	url: (self: any) -> Url,
+	builder: (self: any) -> ResponseBuilder<V>,
 }
+
+type ResponseBuilderImpl<V> = {
+	__index: ResponseBuilderImpl<V>,
+	__tostring: (self: any) -> string,
+	body: (self: any, body: Body<V>) -> ResponseBuilder<V>,
+	status: (self: any, status: number) -> ResponseBuilder<V>,
+	statusMessage: (self: any, message: string) -> ResponseBuilder<V>,
+	url: (self: any, url: Url) -> ResponseBuilder<V>,
+	headers: (self: any, headers: HeaderMap) -> ResponseBuilder<V>,
+	build: (self: any) -> Response<V>,
+}
+
+type ResponseBuilder<V> = ResponseBuilderImpl<V>
 
 type ResponseStruct = {
 	_url: Url,
-	_fetchResponse: LuneUtil.FetchResponse,
+	_body: Body<any>,
+	_statusCode: number,
+	_statusMessage: string,
+	_headers: HeaderMap,
 }
 
 export type Response<V> = ResponseImpl<V> --typeof(setmetatable({}, {} :: ResponseImpl))
@@ -94,14 +112,34 @@ local ERROR_CODES = {
 -- Variables
 -- References
 -- Private Functions
+function newResponseStruct(
+	url: Url,
+	body: Body<any>,
+	status: number,
+	statusMessage: string,
+	headers: HeaderMap
+): ResponseStruct
+	return {
+		_url = url,
+		_body = body,
+		_statusCode = status,
+		_statusMessage = statusMessage,
+		_headers = headers,
+	}
+end
+
 -- Class
+
+local ResponseBuilder = {} :: ResponseBuilderImpl<any>
+ResponseBuilder.__index = ResponseBuilder
 
 local Response = {} :: ResponseImpl<any>
 Response.__index = Response
 
 function Response:__tostring(): string
 	return "Response<{"
-		.. `"url": "{tostring(self._url)}", "response": {Error.displayAsJson(self._fetchResponse)}`
+		.. `"url": "{self._url}", "body": {self._body},`
+		.. `"statusCode": {self._statusCode}, "statusMessage": {self._statusMessage}, "headers": {self._headers}`
 		.. "}>"
 end
 
@@ -110,25 +148,31 @@ function Response:text()
 end
 
 function Response:json()
-	local result = Result.try(function()
-		return LuneUtil.Net.jsonDecode(self._fetchResponse.body)
-	end)
-	if result:isOk() then
-		return Result.ok(result:unwrap())
-	else
+	return self._body:asJson():match(function(v)
+		return Result.ok(v)
+	end, function(e)
 		return Result.err(
 			Error.new("DecodingError")
 				:body(self :: any)
-				:description(result:unwrapErr())
+				:description(
+					e.Description:unwrapOr(`Error decoding text "{self._fetchResponse.body}" into json`)
+				)
 				:title("JSON Decoding Error")
 				:build() :: Error<any, any>
 		)
-	end
+	end)
+end
+
+function Response:builder()
+	local struct =
+		newResponseStruct(self._url, self._body, self._statusCode, self._statusMessage, self._headers)
+	local builder = setmetatable(struct, ResponseBuilder)
+	table.freeze(builder)
+	return builder :: any
 end
 
 function Response:form()
-	local body = Body.fromText(self._fetchResponse.body)
-	return body:asForm():match(function(v)
+	return self._body:asForm():match(function(v)
 		return Result.ok(v)
 	end, function(e)
 		return Result.err(
@@ -161,38 +205,100 @@ function Response:bytes()
 end
 
 function Response:headers(): HeaderMap
-	local headers = HashMap.emptyMut()
-	for key, value in pairs(self._fetchResponse.headers) do
-		headers:insert(key, value)
-	end
-	return headers:freeze()
+	return self._headers
 end
 
 function Response:contentLength(): Option<number>
-	local lengthStr = self._fetchResponse.headers["Content-Length"]
-	if lengthStr then
+	return self._headers:get("Content-Length"):match(function(lengthStr)
 		local length = tonumber(lengthStr)
 		assert(length, "Failed to parse Content-Length header")
 		return Option.some(length)
-	else
+	end, function()
 		return Option.none()
-	end
+	end)
 end
 
 function Response:status(): number
-	return self._fetchResponse.statusCode
+	return self._statusCode
+end
+
+function Response:statusMessage(): string
+	return self._statusMessage
 end
 
 function Response:url(): Url
 	return self._url
 end
 
+function ResponseBuilder:__tostring(): string
+	return "ResponseBuilder<{"
+		.. `"url": "{self._url}", "body": {self._body},`
+		.. `"statusCode": {self._statusCode}, "statusMessage": {self._statusMessage}, "headers": {self._headers}`
+		.. "}>"
+end
+
+function ResponseBuilder:body(body: Body<any>): ResponseBuilder<any>
+	local builder = setmetatable(
+		newResponseStruct(self._url, body, self._statusCode, self._statusMessage, self._headers),
+		ResponseBuilder
+	)
+	table.freeze(builder)
+	return builder :: any
+end
+function ResponseBuilder:status(status: number): ResponseBuilder<any>
+	local builder = setmetatable(
+		newResponseStruct(self._url, self._body, status, self._statusMessage, self._headers),
+		ResponseBuilder
+	)
+	table.freeze(builder)
+	return builder :: any
+end
+function ResponseBuilder:statusMessage(message: string): ResponseBuilder<any>
+	local builder = setmetatable(
+		newResponseStruct(self._url, self._body, self._statusCode, message, self._headers),
+		ResponseBuilder
+	)
+	table.freeze(builder)
+	return builder :: any
+end
+function ResponseBuilder:url(url: Url): ResponseBuilder<any>
+	local builder = setmetatable(
+		newResponseStruct(url, self._body, self._statusCode, self._statusMessage, self._headers),
+		ResponseBuilder
+	)
+	table.freeze(builder)
+	return builder :: any
+end
+function ResponseBuilder:headers(headers: HeaderMap): ResponseBuilder<any>
+	local builder = setmetatable(
+		newResponseStruct(self._url, self._body, self._statusCode, self._statusMessage, headers),
+		ResponseBuilder
+	)
+	table.freeze(builder)
+	return builder :: any
+end
+
+function ResponseBuilder:build(): Response<any>
+	local response = setmetatable(
+		newResponseStruct(self._url, self._body, self._statusCode, self._statusMessage, self._headers),
+		Response
+	)
+	table.freeze(response)
+	return response :: any
+end
+
 return {
-	new = function<V>(url: Url, fetchResponse: LuneUtil.FetchResponse): Response<V>
-		local self = setmetatable({
-			_url = url,
-			_fetchResponse = fetchResponse,
-		}, Response)
+	fromFetchResponse = function<V>(url: Url, fetchResponse: LuneUtil.FetchResponse): Response<V>
+		local mutHeaders = HashMap.emptyMut()
+		for key, value in pairs(fetchResponse.headers) do
+			mutHeaders:insert(key, value)
+		end
+		local headers = mutHeaders:freeze()
+		local body = Body.fromText(fetchResponse.body)
+		local statusCode = fetchResponse.statusCode
+		local statusMessage = fetchResponse.statusMessage
+		local responseStruct = newResponseStruct(url, body, statusCode, statusMessage, headers)
+		local self = setmetatable(responseStruct, Response)
 		table.freeze(self)
 		return self :: any
 	end,

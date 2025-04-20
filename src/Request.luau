@@ -185,7 +185,7 @@ function Request:send<V, E>(): any
 			},
 		})
 
-		local response = Response.new(req.url, fetchResponse)
+		local response = Response.fromFetchResponse(req.url, fetchResponse)
 
 		if fetchResponse.ok then
 			return Result.ok(response)
