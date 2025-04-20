@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -e
 ROJO_PROJECT="$1"
+
+
+# delete wally.lock
+if [ -f "wally.lock" ]; then
+  rm wally.lock
+fi
+
 # if ROJO_PROJECT isn't provided, exit
 if [ -z "$ROJO_PROJECT" ]; then
   echo "Need to supply project file"

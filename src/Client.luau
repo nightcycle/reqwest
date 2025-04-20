@@ -157,7 +157,7 @@ function Client:request(method: Method, url: PotentialSecret | Url): RequestBuil
 	return newRequestBuilder(self, method, url) :: any
 end
 
-function Client:execute<V, E>(request: Request): Future<Result<Result<Response<V>, Response<E>>, string>>
+function Client:execute<V, E>(request: Request): any
 	local req: any = request
 	return req:send()
 end
