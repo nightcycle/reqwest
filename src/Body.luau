@@ -120,9 +120,9 @@ function Body:asJson(): Result<Json, EncodingError>
 		if self._contentType == "text/json" then
 			return self._content
 		elseif self._contentType == "application/octet-stream" then
-			return LuneUtil.Net.jsonEncode(buffer.tostring(self._content))
+			return LuneUtil.Net.jsonDecode(buffer.tostring(self._content))
 		elseif self._contentType == "text/plain" then
-			return LuneUtil.Net.jsonEncode(self._content)
+			return LuneUtil.Net.jsonDecode(self._content)
 		elseif self._contentType == "application/x-www-form-urlencoded" then
 			local form: Form = self._content
 			return form:drain() :: any
