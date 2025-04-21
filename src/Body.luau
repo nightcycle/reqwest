@@ -45,7 +45,7 @@ export type Body<V> = BodyImpl<V> --typeof(setmetatable({}, {} :: BodyImpl))
 -- References
 -- Private Functions
 function generateBoundary(): string
-	return "------------------------" .. LuneUtil.Net.generateGUID(false)
+	return "------WebKitFormBoundary" .. LuneUtil.Net.generateGUID(false):gsub("-", "")
 end
 -- Class
 local Body = {} :: BodyImpl<any>
