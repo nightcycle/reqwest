@@ -22,6 +22,8 @@ export type ClientBuilder = Client.ClientBuilder
 export type Url = Url.Url
 export type PotentialSecret = Url.PotentialSecret
 export type ContentType = Body.ContentType
+export type FieldValue = Body.FieldValue
+export type FormFile = Body.FormFile
 -- Constants
 -- Variables
 -- References
