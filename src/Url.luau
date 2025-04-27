@@ -13,10 +13,11 @@ type Result<V, E> = Result.Result<V, E>
 type HashMap<K, V> = HashMap.HashMap<K, V>
 
 export type PotentialSecret = string | Secret | LuneUtil.CompatSecret
-type UrlStruct = {
-	_source: PotentialSecret,
-	_query: HashMap<PotentialSecret, PotentialSecret>,
-}
+type UrlStruct = any
+-- type UrlStruct = {
+-- 	_source: PotentialSecret,
+-- 	_query: HashMap<PotentialSecret, PotentialSecret>,
+-- }
 type UrlImpl = {
 	__tostring: (self: Url) -> string,
 	__index: UrlImpl,

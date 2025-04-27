@@ -17,6 +17,7 @@ local ledger = testUtil.newLedger
 -- Class
 local tests = {}
 
+-- url
 do
 	local EXAMPLE_URL_STR = "https://example.com/path/to/resource"
 	local SECRET_URL_KEY = "secret_url"
@@ -228,6 +229,107 @@ do
 			}),
 		}),
 	})
+end
+
+-- request
+do
+	local SECRET_KEY = "secret_header"
+	local SECRET_VALUE = "abc123"
+	luneUtil.Env[SECRET_KEY] = option.some(SECRET_VALUE)
+	local JSON_BODY = src.Body.fromJson({
+		hello = "world",
+	})
+	local QUERY = {
+		a = "a",
+		b = "b",
+	}
+	local HEADERS = {
+		["Content-Type"] = "application/json",
+		["Accept"] = "application/json",
+		["Authorization"] = luneUtil.Secrets[SECRET_KEY]:expect(`no secret assigned at "{SECRET_KEY}"`),
+	}
+	local FETCH_TEMPLATE: luneUtil.FetchParams = {
+		method = "POST",
+		url = "https://example.com/path/to/resource",
+		headers = HEADERS,
+		body = nil,
+		query = QUERY :: { [string]: any }?,
+	}
+	local REQUEST_BUILDER = src.Request
+		.new(FETCH_TEMPLATE.method :: any, src.Url.from("https://example.com/path/to/resource", QUERY))
+		:headers(HEADERS)
+		:body(JSON_BODY)
+	tests.request = ledger({
+		constructor = ledger({
+			new = function()
+				REQUEST_BUILDER:build()
+			end,
+		}),
+		method = ledger({
+			class = function()
+				local out = REQUEST_BUILDER:build()
+				assert(
+					out.method == FETCH_TEMPLATE.method,
+					`expected "{out.method}" to be "{FETCH_TEMPLATE.method}"`
+				)
+			end,
+			fetch = function()
+				local out = REQUEST_BUILDER:build():_asFetch()
+				assert(
+					out.method == FETCH_TEMPLATE.method,
+					`expected "{out.method}" to be "{FETCH_TEMPLATE.method}"`
+				)
+			end,
+		}),
+		headers = ledger({
+			class = function()
+				local out = REQUEST_BUILDER:build()
+				local outHeaders = out:headers():expect(`no headers found`)
+				for header, value in pairs(HEADERS) do
+					local outValue = outHeaders:get(header):expect(`missing header "{header}"`)
+					assert(outValue == value, `expected "{header}" to be "{value}". got "{outValue}"`)
+				end
+			end,
+			fetch = function()
+				local out = REQUEST_BUILDER:build()
+				local outHeaders = out:_asFetch().headers
+				assert(outHeaders, `no headers found`)
+				for header, value in pairs(HEADERS) do
+					local outValue = outHeaders[header]
+					if typeof(value) == "table" then
+						value = value:Build()
+					end
+					assert(outValue == value, `expected "{header}" to be "{value}". got "{outValue}"`)
+				end
+			end,
+		}),
+		body = ledger({
+			class = function()
+				local out = REQUEST_BUILDER:build()
+				assert(out:body():unwrap() == JSON_BODY, `body mismatch`)
+			end,
+			fetch = function()
+				local out = REQUEST_BUILDER:build()
+				local outTxt = out:_asFetch().body
+				assert(outTxt, `no body found`)
+				local origBody = JSON_BODY:asText():unwrap()
+				assert(outTxt == origBody, `body mismatch, got "{outTxt}", expected: "{origBody}"`)
+			end,
+		}),
+	})
+end
+
+-- client
+do
+	local client = src.Client.new()
+	client
+		:build()
+		:get("example.com")
+		:body(src.Body.fromForm(hashMap.empty(), hashMap.empty(), option.none()))
+		:build()
+		:send()
+		:await()
+		:unwrap()
 end
 
 ledger(tests):run()

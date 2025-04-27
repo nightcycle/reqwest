@@ -24,31 +24,35 @@ type Response<V> = Response.Response<V>
 type Option<V> = Option.Option<V>
 type Result<V, E> = Result.Result<V, E>
 type Future<V> = Future.Future<V>
-type ClientStruct = {
-	_userAgent: Option<HeaderValue>,
-	_defaultHeaders: Option<HeaderMap>,
-	_gzip: Option<boolean>,
-}
+type ClientStruct = any
+-- type ClientStruct = {
+-- 	_userAgent: Option<HeaderValue>,
+-- 	_defaultHeaders: Option<HeaderMap>,
+-- 	_gzip: Option<boolean>,
+-- }
 type ClientImpl = {
 	__index: ClientImpl,
-	__tostring: (self: any) -> string,
-	builder: (self: any) -> ClientBuilder,
-	get: (self: any, url: PotentialSecret | Url) -> RequestBuilder,
-	post: (self: any, url: PotentialSecret | Url) -> RequestBuilder,
-	put: (self: any, url: PotentialSecret | Url) -> RequestBuilder,
-	delete: (self: any, url: PotentialSecret | Url) -> RequestBuilder,
-	patch: (self: any, url: PotentialSecret | Url) -> RequestBuilder,
-	request: (self: any, method: Method, url: PotentialSecret | Url) -> RequestBuilder,
-	execute: <V, E>(self: any, request: Request) -> Future<Result<Result<Response<V>, Response<E>>, string>>,
+	__tostring: (self: Client) -> string,
+	builder: (self: Client) -> ClientBuilder,
+	get: (self: Client, url: PotentialSecret | Url) -> RequestBuilder,
+	post: (self: Client, url: PotentialSecret | Url) -> RequestBuilder,
+	put: (self: Client, url: PotentialSecret | Url) -> RequestBuilder,
+	delete: (self: Client, url: PotentialSecret | Url) -> RequestBuilder,
+	patch: (self: Client, url: PotentialSecret | Url) -> RequestBuilder,
+	request: (self: Client, method: Method, url: PotentialSecret | Url) -> RequestBuilder,
+	execute: <V, E>(
+		self: Client,
+		request: Request
+	) -> Future<Result<Result<Response<V>, Response<E>>, string>>,
 }
 type ClientBuilderImpl = {
 	__index: ClientBuilderImpl,
-	__tostring: (self: Client) -> string,
-	build: (self: Client) -> Client,
-	userAgent: (self: Client, userAgent: HeaderValue | HeaderValue) -> ClientBuilder,
-	defaultHeaders: (self: Client, headers: HeaderMap) -> ClientBuilder,
-	header: (self: Client, key: HeaderKey, value: HeaderValue) -> ClientBuilder,
-	gzip: (self: Client, enabled: boolean) -> ClientBuilder,
+	__tostring: (self: ClientBuilder) -> string,
+	build: (self: ClientBuilder) -> Client,
+	userAgent: (self: ClientBuilder, userAgent: HeaderValue | HeaderValue) -> ClientBuilder,
+	defaultHeaders: (self: ClientBuilder, headers: HeaderMap) -> ClientBuilder,
+	header: (self: ClientBuilder, key: HeaderKey, value: HeaderValue) -> ClientBuilder,
+	gzip: (self: ClientBuilder, enabled: boolean) -> ClientBuilder,
 }
 
 export type Client = ClientStruct & ClientImpl
@@ -166,11 +170,11 @@ function Client:builder(): ClientBuilder
 end
 
 function ClientBuilder:gzip(enabled: boolean): ClientBuilder
-	return newClient(self._userAgent, self._defaultHeaders, Option.some(enabled)):builder() :: any
+	return newClient(self._userAgent, self._defaultHeaders, Option.some(enabled)):builder()
 end
 
 function ClientBuilder:defaultHeaders(headers: HeaderMap): ClientBuilder
-	return newClient(self._userAgent, Option.some(headers), self._gzip):builder() :: any
+	return newClient(self._userAgent, Option.some(headers), self._gzip):builder()
 end
 
 function ClientBuilder:header(key: HeaderKey, value: HeaderValue): ClientBuilder
@@ -201,5 +205,11 @@ end
 return {
 	new = function(): ClientBuilder
 		return newClient(Option.none(), Option.none(), Option.none()):builder() :: any
+	end,
+	isClient = function(obj: unknown?): boolean
+		return typeof(obj) == "table" and getmetatable(obj :: any) == Client
+	end,
+	isClientBuilder = function(obj: unknown?): boolean
+		return typeof(obj) == "table" and getmetatable(obj :: any) == ClientBuilder
 	end,
 }

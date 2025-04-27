@@ -35,10 +35,11 @@ type BodyImpl<V> = {
 	asJson: (self: Body<V>) -> Result<V & Json, EncodingError>,
 	asForm: (self: Body<V>) -> Result<V & Form, EncodingError>,
 }
-type BodyStruct = {
-	_contentType: ContentType,
-	_content: Json | buffer | string | Form,
-}
+type BodyStruct = any
+-- type BodyStruct = {
+-- 	_contentType: ContentType,
+-- 	_content: Json | buffer | string | Form,
+-- }
 export type Body<V> = BodyStruct & BodyImpl<V>
 -- Constants
 -- Variables
@@ -451,5 +452,8 @@ return {
 		)
 		table.freeze(out)
 		return out :: any
+	end,
+	isBody = function(obj: unknown?): boolean
+		return typeof(obj) == "table" and getmetatable(obj :: any) == Body
 	end,
 }

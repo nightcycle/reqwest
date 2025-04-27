@@ -32,29 +32,35 @@ type RequestBuilderImpl = {
 	build: (self: RequestBuilder) -> Request,
 	header: (self: RequestBuilder, key: HeaderKey, value: HeaderValue) -> RequestBuilder,
 	headers: (self: RequestBuilder, headers: HeaderMap) -> RequestBuilder,
-	query: (self: RequestBuilder, query: HashMap<PotentialSecret, PotentialSecret>) -> RequestBuilder,
 	json: (self: RequestBuilder) -> RequestBuilder,
 	send: <V, E>(self: RequestBuilder) -> Future<Result<Response<V>, Response<E>>>,
 }
 type Response<V> = Response.Response<V>
-type RequestStruct = {
-	method: Method,
-	url: Url,
-	_query: Option<HashMap<PotentialSecret, PotentialSecret>>,
-	_body: Option<Body<any>>,
-	_headers: Option<HeaderMap>,
-}
+
+type RequestStruct = any
+-- type RequestStruct = {
+-- 	method: Method,
+-- 	url: Url,
+-- 	_body: Option<Body<any>>,
+-- 	_headers: Option<HeaderMap>,
+-- }
 export type RequestBuilder = RequestStruct & RequestBuilderImpl
 export type Method = "GET" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH"
 
 type RequestImpl = {
 	__index: RequestImpl,
-	__tostring: (self: Request) -> string,
-	builder: (self: Request) -> RequestBuilder,
-	send: <V, E>(self: Request) -> Future<Result<Response<V>, Response<E>>>,
+	__tostring: (self: RequestStruct) -> string,
+	builder: (self: RequestStruct) -> RequestBuilder,
+	send: <V, E>(self: RequestStruct) -> Future<Result<Response<V>, Response<E>>>,
+	headers: (self: RequestStruct) -> Option<HeaderMap>,
+	body: (self: RequestStruct) -> Option<Body<any>>,
+	_asFetch: (self: RequestStruct) -> LuneUtil.FetchParams,
 }
-export type Request = RequestImpl & RequestStruct
-
+-- export type Request = RequestImpl & RequestStruct
+export type Request = RequestImpl & {
+	method: Method,
+	url: Url,
+}
 -- Constants
 
 -- Variables
@@ -66,9 +72,9 @@ Request.__index = Request
 
 function Request:__tostring(): string
 	return "Request<{"
-		.. `"method": "{tostring(self.method)}", "url": "{tostring(self.url)}", "query": "{tostring(
-			self._query
-		)}", "body": "{tostring(self._body)}", "headers": "{tostring(self._headers)}"`
+		.. `"method": "{tostring(self.method)}", "url": "{tostring(self.url)}", "body": "{tostring(self._body)}", "headers": "{tostring(
+			self._headers
+		)}"`
 		.. "}>"
 end
 
@@ -76,24 +82,22 @@ local RequestBuilder = {} :: RequestBuilderImpl
 RequestBuilder.__index = RequestBuilder
 
 function RequestBuilder:__tostring(): string
-	return "Request<{"
-		.. `"method": "{tostring(self.method)}", "url": "{tostring(self.url)}", "query": "{tostring(
-			self._query
-		)}", "body": "{tostring(self._body)}", "headers": "{tostring(self._headers)}"`
+	return "RequestBuilder<{"
+		.. `"method": "{tostring(self.method)}", "url": "{tostring(self.url)}", "body": "{tostring(self._body)}", "headers": "{tostring(
+			self._headers
+		)}"`
 		.. "}>"
 end
 
 function newRequest<V>(
 	method: Method,
 	url: Url | PotentialSecret,
-	query: Option<HashMap<PotentialSecret, PotentialSecret>>,
 	body: Option<V>,
 	headers: Option<HeaderMap>
 ): Request
 	local self = setmetatable({
 		method = method,
 		url = if Url.isUrl(url) then url else Url.from(url :: PotentialSecret),
-		_query = query,
 		_body = body,
 		_headers = headers,
 	}, Request)
@@ -108,82 +112,83 @@ function Request:builder(): RequestBuilder
 	return out :: any
 end
 
-function Request:send<V, E>(): any
-	return Future.from(function(): any
-		local req: RequestStruct = self :: any
-		local url: string | Secret = req._query:match(function(query): string | Secret
-			local out = Url.from(req.url._source, query):display() :: PotentialSecret
-			if typeof(out) == "table" then
-				return out:Build() :: string | Secret
-			end
-			return out
-		end, function(): string | Secret
-			local out = req.url:display() :: PotentialSecret
-			if typeof(out) == "table" then
-				return out:Build() :: string | Secret
-			end
-			return out
-		end)
-		local body: string? = req._body:match(function(out): string?
-			return out:asText():expect(`failed to convert body to string`)
-		end, function()
-			return nil
-		end)
+function Request:_asFetch(): LuneUtil.FetchParams
+	local url: string | Secret = (function(): string | Secret
+		local out = self.url:display() :: PotentialSecret
+		if typeof(out) == "table" then
+			return out:Build() :: string | Secret
+		end
+		return out
+	end)()
 
-		local headers: { [any]: any } = req._headers:match(
-			function(map: HeaderMap): { [HeaderKey]: HeaderValue }
-				local baseHeaders = map:drain()
+	local body: string? = self._body:match(function(out): string?
+		return out:asText():expect(`failed to convert body to string`)
+	end, function()
+		return nil
+	end)
 
-				local finalHeaders: { [string | Secret]: string | Secret } = {}
-				for key, value in pairs(baseHeaders) do
-					local finalKey: Option<string | Secret> = Option.none()
-					if typeof(key) == "string" then
-						finalKey = Option.some(key :: string | Secret)
-					else
-						if typeof(key) == "Secret" then
-							finalKey = Option.some(key :: string | Secret)
-						else
-							finalKey = Option.some(key:Build() :: string | Secret)
-						end
-					end
-					local finalValue: Option<string | Secret> = Option.none()
-					if typeof(value) == "string" then
-						finalValue = Option.some(value :: string | Secret)
-					else
-						if typeof(value) == "Secret" then
-							finalValue = Option.some(value :: string | Secret)
-						else
-							finalValue = Option.some(value:Build() :: string | Secret)
-						end
-					end
+	local headers: { [any]: any } = self._headers:match(function(map: HeaderMap): { [HeaderKey]: HeaderValue }
+		local baseHeaders = map:drain()
 
-					finalHeaders[finalKey:expect("bad header key")] = finalValue:expect("bad header value")
+		local finalHeaders: { [string | Secret]: string | Secret } = {}
+		for key, value in pairs(baseHeaders) do
+			local finalKey: Option<string | Secret> = Option.none()
+			if typeof(key) == "string" then
+				finalKey = Option.some(key :: string | Secret)
+			else
+				if typeof(key) == "Secret" then
+					finalKey = Option.some(key :: string | Secret)
+				else
+					finalKey = Option.some(key:Build() :: string | Secret)
 				end
-
-				return finalHeaders
-			end,
-			function()
-				return {}
 			end
-		)
+			local finalValue: Option<string | Secret> = Option.none()
+			if typeof(value) == "string" then
+				finalValue = Option.some(value :: string | Secret)
+			else
+				if typeof(value) == "Secret" then
+					finalValue = Option.some(value :: string | Secret)
+				else
+					finalValue = Option.some(value:Build() :: string | Secret)
+				end
+			end
 
-		local isGZip = headers["Accept-Encoding"] == "gzip"
-		if isGZip then
-			headers["Accept-Encoding"] = nil
+			finalHeaders[finalKey:expect("bad header key")] = finalValue:expect("bad header value")
 		end
 
-		local fetchResponse: LuneUtil.FetchResponse = LuneUtil.Net.request({
-			url = url :: any,
-			method = req.method :: any,
-			headers = headers :: any,
-			body = body,
-			options = {
-				decompress = isGZip,
-			},
-		})
+		return finalHeaders
+	end, function()
+		return {}
+	end)
 
-		local response = Response.fromFetchResponse(req.url, fetchResponse)
+	local isGZip = headers["Accept-Encoding"] == "gzip"
+	if isGZip then
+		headers["Accept-Encoding"] = nil
+	end
 
+	return {
+		url = url :: any,
+		method = self.method :: any,
+		headers = headers :: any,
+		body = body,
+		options = {
+			decompress = isGZip,
+		},
+	} :: LuneUtil.FetchParams
+end
+
+function Request:headers(): Option<HeaderMap>
+	return self._headers
+end
+function Request:body(): Option<Body<any>>
+	return self._body
+end
+
+function Request:send<V, E>(): any
+	return Future.from(function(): any
+		local request = self:_asFetch()
+		local fetchResponse: LuneUtil.FetchResponse = LuneUtil.Net.request(request)
+		local response = Response.fromFetchResponse(Url.from(request.url), fetchResponse)
 		if fetchResponse.ok then
 			return Result.ok(response)
 		else
@@ -193,56 +198,39 @@ function Request:send<V, E>(): any
 end
 
 function RequestBuilder:build(): Request
-	return newRequest(
-		self.method :: any,
-		self.url :: any,
-		self._query :: any,
-		self._body :: any,
-		self._headers :: any
-	) :: any
+	return newRequest(self.method :: any, self.url :: any, self._body :: any, self._headers :: any) :: any
 end
 
 function RequestBuilder:send<V, E>(): any
-	local request: Request = self:build() :: any
+	local request: Request = self:build()
 	return request:send()
 end
 
 function RequestBuilder:body(body: Body<any>): RequestBuilder
 	return newRequest(
-		self.method :: any,
-		self.url :: any,
-		self._query :: any,
-		Option.some(body) :: any,
-		self._headers :: any
-	):builder() :: any
+			self.method :: any,
+			self.url :: any,
+			Option.some(body) :: any,
+			self._headers :: any
+		):builder() :: any
 end
 
-function RequestBuilder:query(query: HashMap<PotentialSecret, PotentialSecret>): RequestBuilder
+function RequestBuilder:headers(headers: HeaderMap | { [HeaderKey]: HeaderValue }): RequestBuilder
 	return (newRequest(
-		self.method :: any,
-		self.url :: any,
-		Option.some(query),
-		self._body :: any,
-		self._headers :: any
-	) :: any):builder() :: any
-end
-
-function RequestBuilder:headers(headers: HeaderMap): RequestBuilder
-	return (newRequest(
-		self.method :: any,
-		self.url :: any,
-		self._query :: any,
-		self._body :: any,
-		Option.some(headers) :: any
-	) :: any):builder() :: any
+		self.method,
+		self.url,
+		self._body,
+		if HashMap.isHashMap(headers)
+			then Option.some(headers :: any)
+			else Option.some(HashMap.from(headers :: any))
+	)):builder()
 end
 
 function RequestBuilder:header(key: HeaderKey, value: HeaderValue): RequestBuilder
 	return newRequest(
-		self.method :: any,
-		self.url :: any,
-		self._query :: any,
-		self._body :: any,
+		self.method,
+		self.url,
+		self._body,
 		Option.some(self._headers:match(function(old: HeaderMap): HeaderMap
 			local headers = old:asMut()
 			local _ = headers:insert(key, value)
@@ -251,8 +239,8 @@ function RequestBuilder:header(key: HeaderKey, value: HeaderValue): RequestBuild
 			local headers = HashMap.emptyMut()
 			headers:insert(key, value)
 			return headers:freeze()
-		end)) :: any
-	):builder() :: any
+		end))
+	):builder()
 end
 
 -- has to be a string because you can't b64 encode a secret
@@ -281,6 +269,12 @@ end
 
 return {
 	new = function(method: Method, url: Url | PotentialSecret): RequestBuilder
-		return newRequest(method :: any, url :: any, Option.none(), Option.none(), Option.none()):builder() :: any
+		return newRequest(method :: any, url :: any, Option.none(), Option.none()):builder() :: any
+	end,
+	isRequest = function(obj: unknown?): boolean
+		return typeof(obj) == "table" and getmetatable(obj :: any) == Request
+	end,
+	isRequestBuilder = function(obj: unknown?): boolean
+		return typeof(obj) == "table" and getmetatable(obj :: any) == RequestBuilder
 	end,
 }

@@ -54,13 +54,14 @@ type ResponseBuilderImpl<V> = {
 }
 
 type ResponseBuilder<V> = ResponseStruct & ResponseBuilderImpl<V>
-type ResponseStruct = {
-	_url: Url,
-	_body: Body<any>,
-	_statusCode: number,
-	_statusMessage: string,
-	_headers: HeaderMap,
-}
+type ResponseStruct = any
+-- type ResponseStruct = {
+-- 	_url: Url,
+-- 	_body: Body<any>,
+-- 	_statusCode: number,
+-- 	_statusMessage: string,
+-- 	_headers: HeaderMap,
+-- }
 
 export type Response<V> = ResponseStruct & ResponseImpl<V>
 
@@ -307,6 +308,9 @@ return {
 		local self = setmetatable(responseStruct, Response)
 		table.freeze(self)
 		return self :: any
+	end,
+	isResponse = function(obj: unknown?): boolean
+		return typeof(obj) == "table" and getmetatable(obj :: any) == Response
 	end,
 	ERROR_CODES = ERROR_CODES,
 }
