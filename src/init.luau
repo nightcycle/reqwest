@@ -28,7 +28,6 @@ export type FormFile = Body.FormFile
 -- Variables
 -- References
 -- Private Functions
-
 -- Class
 return {
 	Body = Body,

@@ -29,33 +29,31 @@ type Error<T, Body> = Error.Error<T, Body>
 type DecodingError = Error<"DecodingError", ResponseStruct>
 type ResponseImpl<V> = {
 	__index: ResponseImpl<V>,
-	__tostring: (self: any) -> string,
-	text: (self: any) -> Result<string & V, DecodingError>,
-	json: (self: any) -> Result<Json & V, DecodingError>,
-	form: (self: any) -> Result<Form & V, DecodingError>,
-	bytes: (self: any) -> Result<buffer, DecodingError>,
-	ok: (self: any) -> boolean,
-	headers: (self: any) -> HeaderMap,
-	contentLength: (self: any) -> Option<number>,
-	status: (self: any) -> number,
-	statusMessage: (self: any) -> string,
-	url: (self: any) -> Url,
-	builder: (self: any) -> ResponseBuilder<V>,
+	__tostring: (self: Response<V>) -> string,
+	text: (self: Response<V>) -> Result<string & V, DecodingError>,
+	json: (self: Response<V>) -> Result<Json & V, DecodingError>,
+	form: (self: Response<V>) -> Result<Form & V, DecodingError>,
+	bytes: (self: Response<V>) -> Result<buffer, DecodingError>,
+	ok: (self: Response<V>) -> boolean,
+	headers: (self: Response<V>) -> HeaderMap,
+	contentLength: (self: Response<V>) -> Option<number>,
+	status: (self: Response<V>) -> number,
+	statusMessage: (self: Response<V>) -> string,
+	url: (self: Response<V>) -> Url,
+	builder: (self: Response<V>) -> ResponseBuilder<V>,
 }
-
 type ResponseBuilderImpl<V> = {
 	__index: ResponseBuilderImpl<V>,
-	__tostring: (self: any) -> string,
-	body: (self: any, body: Body<V>) -> ResponseBuilder<V>,
-	status: (self: any, status: number) -> ResponseBuilder<V>,
-	statusMessage: (self: any, message: string) -> ResponseBuilder<V>,
-	url: (self: any, url: Url) -> ResponseBuilder<V>,
-	headers: (self: any, headers: HeaderMap) -> ResponseBuilder<V>,
-	build: (self: any) -> Response<V>,
+	__tostring: (self: ResponseBuilder<V>) -> string,
+	body: (self: ResponseBuilder<V>, body: Body<V>) -> ResponseBuilder<V>,
+	status: (self: ResponseBuilder<V>, status: number) -> ResponseBuilder<V>,
+	statusMessage: (self: ResponseBuilder<V>, message: string) -> ResponseBuilder<V>,
+	url: (self: ResponseBuilder<V>, url: Url) -> ResponseBuilder<V>,
+	headers: (self: ResponseBuilder<V>, headers: HeaderMap) -> ResponseBuilder<V>,
+	build: (self: ResponseBuilder<V>) -> Response<V>,
 }
 
-type ResponseBuilder<V> = ResponseBuilderImpl<V>
-
+type ResponseBuilder<V> = ResponseStruct & ResponseBuilderImpl<V>
 type ResponseStruct = {
 	_url: Url,
 	_body: Body<any>,
@@ -64,7 +62,7 @@ type ResponseStruct = {
 	_headers: HeaderMap,
 }
 
-export type Response<V> = ResponseImpl<V> --typeof(setmetatable({}, {} :: ResponseImpl))
+export type Response<V> = ResponseStruct & ResponseImpl<V>
 
 -- Constants
 local ERROR_CODES = {

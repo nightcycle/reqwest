@@ -11,24 +11,23 @@ local LuneUtil = require("@pkg/@nightcycle/lune-util")
 type Option<V> = Option.Option<V>
 type Result<V, E> = Result.Result<V, E>
 type HashMap<K, V> = HashMap.HashMap<K, V>
+
 export type PotentialSecret = string | Secret | LuneUtil.CompatSecret
-type UrlImpl = {
-	__tostring: (self: any) -> string,
-	__index: UrlImpl,
-	display: (self: any) -> PotentialSecret,
-	path: (self: any) -> string,
-	domain: (self: any) -> string,
-	query: (
-		self: any,
-		query: HashMap<PotentialSecret, PotentialSecret> | { [PotentialSecret]: PotentialSecret }
-	) -> Url,
-}
 type UrlStruct = {
 	_source: PotentialSecret,
-	_query: HashMap<string, string>,
+	_query: HashMap<PotentialSecret, PotentialSecret>,
+}
+type UrlImpl = {
+	__tostring: (self: Url) -> string,
+	__index: UrlImpl,
+	display: (self: Url) -> PotentialSecret,
+	path: (self: Url) -> Option<string>,
+	protocol: (self: Url) -> Option<string>,
+	domain: (self: Url) -> Option<string>,
+	query: (self: Url) -> Option<string>,
 }
 
-export type Url = UrlImpl -- typeof(setmetatable({}, {} :: UrlImpl))
+export type Url = UrlStruct & UrlImpl
 
 -- Constants
 -- Variables
@@ -39,6 +38,19 @@ local Url = {} :: UrlImpl
 Url.__index = Url
 
 function newUrl(source: PotentialSecret, query: HashMap<PotentialSecret, PotentialSecret>): Url
+	if typeof(source) == "string" and source:find("?") then
+		local parts = string.split(source, "?")
+		source = parts[1]
+		local queryString = parts[2]
+		local mutQuery = query:asMut()
+		for _, part in ipairs(string.split(queryString, "&")) do
+			local key, value = string.match(part, "([^=]+)=([^=]+)")
+			if key and value then
+				mutQuery:insert(key, value)
+			end
+		end
+		query = mutQuery:freeze()
+	end
 	local out = setmetatable({
 		_source = source,
 		_query = query,
@@ -47,22 +59,61 @@ function newUrl(source: PotentialSecret, query: HashMap<PotentialSecret, Potenti
 	return out :: any
 end
 
-function Url:domain(): string
-	if typeof(self._source) == "string" then
-		local parts = string.split(self._source, "/")
-		return parts[1]
+function Url:query(): Option<string>
+	if self._query:isEmpty() then
+		return Option.none()
 	else
-		error("Cannot get domain from secret URL")
+		local queryParts: { string } = {}
+		for key, value in pairs(self._query:drain()) do
+			assert(
+				typeof(key) == "string" and typeof(value) == "string",
+				"secret URL keys / values can't be returned as strings"
+			)
+			table.insert(queryParts, ("%s=%s"):format(key, value))
+		end
+		return Option.from(table.concat(queryParts, "&"))
 	end
 end
 
-function Url:path(): string
+function Url:protocol(): Option<string>
 	if typeof(self._source) == "string" then
-		local parts = string.split(self._source, "/")
-		table.remove(parts, 1)
-		return table.concat(parts, "/")
+		local parts = string.split(self._source, "://")
+		return Option.from(parts[1])
 	else
-		error("Cannot get path from secret URL")
+		error("Cannot get protocol from secret URL source")
+	end
+end
+
+function Url:domain(): Option<string>
+	if typeof(self._source) == "string" then
+		local body = string.split(self._source, "://")[2]
+		if body then
+			local baseDomain = body:split("/")[1]
+			if baseDomain and baseDomain:find("?") then
+				baseDomain = baseDomain:split("?")[1]
+			end
+			if baseDomain and baseDomain:find("@") then -- email usernames
+				baseDomain = baseDomain:split("@")[2]
+			end
+			return Option.from(baseDomain)
+		end
+		return Option.none()
+	else
+		error("Cannot get domain from secret URL source")
+	end
+end
+
+function Url:path(): Option<string>
+	if typeof(self._source) == "string" then
+		local source = self._source:gsub("://", "")
+		if source:find("/") == nil then
+			return Option.none()
+		end
+		local parts = string.split(source, "/")
+		table.remove(parts, 1)
+		return Option.from(table.concat(parts, "/"):split("?")[1])
+	else
+		error("Cannot get path from secret URL source")
 	end
 end
 
@@ -84,12 +135,12 @@ function Url:display(): PotentialSecret
 	if secretCount > 0 then
 		if isSourceSecret then
 			local queryParts: { string } = {}
-			local source: Secret | LuneUtil.CompatSecret = self._source
+			local source: Secret | LuneUtil.CompatSecret = self._source :: Secret | LuneUtil.CompatSecret
 			for key, value in pairs(self._query:drain()) do
-				table.insert(queryParts, ("%s=%s"):format(key, value))
+				table.insert(queryParts, ("%s=%s"):format(tostring(key), tostring(value)))
 			end
 			if #queryParts > 0 then
-				local suffix = table.concat(queryParts, "&")
+				local suffix = "?" .. table.concat(queryParts, "&")
 				if typeof(source) == "table" then
 					return source:AddSuffix(suffix)
 				else
@@ -99,7 +150,7 @@ function Url:display(): PotentialSecret
 				return source
 			end
 		else
-			local source: string = self._source
+			local source: string = self._source :: string
 			local prefix = source
 			local suffix = ""
 			local center: Option<Secret | LuneUtil.CompatSecret> = Option.none()
@@ -112,7 +163,9 @@ function Url:display(): PotentialSecret
 			end
 			local isPostSecret = false
 			local queryIndex = 0
-			for key, value in pairs(self._query:drain()) do
+			for key: Secret | LuneUtil.CompatSecret | string, value: Secret | LuneUtil.CompatSecret | string in
+				pairs(self._query:drain())
+			do
 				queryIndex += 1
 				if typeof(key) == "table" or typeof(key) == "Secret" then
 					isPostSecret = true
@@ -130,9 +183,9 @@ function Url:display(): PotentialSecret
 					center = Option.some(value)
 				else
 					if isPostSecret then
-						suffix ..= `={value}`
+						suffix ..= `{value}`
 					else
-						prefix ..= `={value}`
+						prefix ..= `{value}`
 					end
 				end
 				if queryCount ~= queryIndex then
@@ -156,7 +209,7 @@ function Url:display(): PotentialSecret
 			table.insert(queryParts, `{key}={value}`)
 		end
 		local query = table.concat(queryParts, "&")
-		return self._source .. if #queryParts > 0 then "?" .. query else ""
+		return (self._source :: string) .. if #queryParts > 0 then "?" .. query else ""
 	end
 end
 
@@ -164,15 +217,18 @@ function Url:__tostring(): string
 	return "Url<{" .. `"source": "{tostring(self._source)}", "query": "{tostring(self._query)}"` .. "}>"
 end
 
-function Url:query(query: HashMap<PotentialSecret, PotentialSecret> | { [PotentialSecret]: PotentialSecret })
-	return newUrl(self._source, if HashMap.isHashMap(query) then query :: any else HashMap.from(query))
-end
-
 return {
-	tryFrom = function(value: PotentialSecret): Result<Url, string>
-		return Result.try(function()
-			return newUrl(value, HashMap.empty())
-		end) :: any
+	from = function(
+		value: PotentialSecret,
+		query: (HashMap<PotentialSecret, PotentialSecret> | { [PotentialSecret]: PotentialSecret })?
+	): Url
+		return newUrl(
+			value,
+			if typeof(query) == "nil"
+				then HashMap.empty()
+				elseif HashMap.isHashMap(query) then query
+				else HashMap.from(query :: any) :: any
+		)
 	end,
 	isUrl = function(value: any?): boolean
 		return if typeof(value) == "table" then getmetatable(value) == Url else false

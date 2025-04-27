@@ -21,20 +21,20 @@ type HeaderKey = Response.HeaderKey
 type Option<V> = Option.Option<V>
 type Result<V, E> = Result.Result<V, E>
 type Future<V> = Future.Future<V>
-
 type Body<V> = Body.Body<V>
 
 type RequestBuilderImpl = {
 	__index: RequestBuilderImpl,
-	__tostring: (self: any) -> string,
-	basicAuth: (self: any, username: string, password: string) -> RequestBuilder,
-	bearerAuth: (self: any, token: PotentialSecret) -> RequestBuilder,
-	body: (self: any, body: Body<any>) -> RequestBuilder,
-	build: (self: any) -> Request,
-	header: (self: any, key: HeaderKey, value: HeaderValue) -> RequestBuilder,
-	headers: (self: any, headers: HeaderMap) -> RequestBuilder,
-	query: (self: any, query: HashMap<PotentialSecret, PotentialSecret>) -> RequestBuilder,
-	json: (self: any) -> RequestBuilder,
+	__tostring: (self: RequestBuilder) -> string,
+	basicAuth: (self: RequestBuilder, username: string, password: string) -> RequestBuilder,
+	bearerAuth: (self: RequestBuilder, token: PotentialSecret) -> RequestBuilder,
+	body: (self: RequestBuilder, body: Body<any>) -> RequestBuilder,
+	build: (self: RequestBuilder) -> Request,
+	header: (self: RequestBuilder, key: HeaderKey, value: HeaderValue) -> RequestBuilder,
+	headers: (self: RequestBuilder, headers: HeaderMap) -> RequestBuilder,
+	query: (self: RequestBuilder, query: HashMap<PotentialSecret, PotentialSecret>) -> RequestBuilder,
+	json: (self: RequestBuilder) -> RequestBuilder,
+	send: <V, E>(self: RequestBuilder) -> Future<Result<Response<V>, Response<E>>>,
 }
 type Response<V> = Response.Response<V>
 type RequestStruct = {
@@ -44,19 +44,16 @@ type RequestStruct = {
 	_body: Option<Body<any>>,
 	_headers: Option<HeaderMap>,
 }
-export type RequestBuilder = RequestBuilderImpl -- typeof(setmetatable({}, {} :: RequestBuilderImpl))
-export type Method = "GET" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH" -- limited by lune support
+export type RequestBuilder = RequestStruct & RequestBuilderImpl
+export type Method = "GET" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH"
 
 type RequestImpl = {
 	__index: RequestImpl,
-	__tostring: (self: any) -> string,
+	__tostring: (self: Request) -> string,
 	builder: (self: Request) -> RequestBuilder,
 	send: <V, E>(self: Request) -> Future<Result<Response<V>, Response<E>>>,
 }
-export type Request = RequestImpl & {
-	method: Method,
-	url: Url,
-} -- typeof(setmetatable({}, {} :: RequestImpl))
+export type Request = RequestImpl & RequestStruct
 
 -- Constants
 
@@ -95,7 +92,7 @@ function newRequest<V>(
 ): Request
 	local self = setmetatable({
 		method = method,
-		url = if Url.isUrl(url) then url else Url.tryFrom(url :: PotentialSecret):unwrap() :: Url,
+		url = if Url.isUrl(url) then url else Url.from(url :: PotentialSecret),
 		_query = query,
 		_body = body,
 		_headers = headers,
@@ -115,7 +112,7 @@ function Request:send<V, E>(): any
 	return Future.from(function(): any
 		local req: RequestStruct = self :: any
 		local url: string | Secret = req._query:match(function(query): string | Secret
-			local out = req.url:query(query):display() :: PotentialSecret
+			local out = Url.from(req.url._source, query):display() :: PotentialSecret
 			if typeof(out) == "table" then
 				return out:Build() :: string | Secret
 			end
@@ -203,6 +200,11 @@ function RequestBuilder:build(): Request
 		self._body :: any,
 		self._headers :: any
 	) :: any
+end
+
+function RequestBuilder:send<V, E>(): any
+	local request: Request = self:build() :: any
+	return request:send()
 end
 
 function RequestBuilder:body(body: Body<any>): RequestBuilder

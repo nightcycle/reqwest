@@ -41,19 +41,18 @@ type ClientImpl = {
 	request: (self: any, method: Method, url: PotentialSecret | Url) -> RequestBuilder,
 	execute: <V, E>(self: any, request: Request) -> Future<Result<Result<Response<V>, Response<E>>, string>>,
 }
-
-export type Client = ClientImpl --typeof(setmetatable({}, {} :: ClientImpl))
-
 type ClientBuilderImpl = {
 	__index: ClientBuilderImpl,
-	__tostring: (self: any) -> string,
-	build: (self: any) -> Client,
-	userAgent: (self: any, userAgent: HeaderValue | HeaderValue) -> ClientBuilder,
-	defaultHeaders: (self: any, headers: HeaderMap) -> ClientBuilder,
-	header: (self: any, key: HeaderKey, value: HeaderValue) -> ClientBuilder,
-	gzip: (self: any, enabled: boolean) -> ClientBuilder,
+	__tostring: (self: Client) -> string,
+	build: (self: Client) -> Client,
+	userAgent: (self: Client, userAgent: HeaderValue | HeaderValue) -> ClientBuilder,
+	defaultHeaders: (self: Client, headers: HeaderMap) -> ClientBuilder,
+	header: (self: Client, key: HeaderKey, value: HeaderValue) -> ClientBuilder,
+	gzip: (self: Client, enabled: boolean) -> ClientBuilder,
 }
-export type ClientBuilder = ClientBuilderImpl --typeof(setmetatable({}, {} :: ClientBuilderImpl))
+
+export type Client = ClientStruct & ClientImpl
+export type ClientBuilder = ClientStruct & ClientBuilderImpl
 
 -- Constants
 -- Variables
@@ -177,15 +176,15 @@ end
 function ClientBuilder:header(key: HeaderKey, value: HeaderValue): ClientBuilder
 	return newClient(
 		self._userAgent,
-		self._headers:match(function(map): Option<HeaderMap>
+		self._defaultHeaders:match(function(map): Option<HeaderMap>
 			local newMap = HashMap.fromMut(map:drain())
 			newMap:insert(key, value)
-			return Option.some(newMap:freeze())
+			return Option.some(newMap:freeze() :: any)
 		end, function()
 			local newMap = HashMap.from({
 				[key] = value,
 			})
-			return Option.some(newMap)
+			return Option.some(newMap :: any)
 		end),
 		self._gzip
 	):builder() :: any

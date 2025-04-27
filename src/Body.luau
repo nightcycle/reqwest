@@ -29,17 +29,17 @@ export type ContentType = "text/json" | "application/octet-stream" | "text/plain
 type EncodingError = Error<"EncodingError", ContentType>
 type BodyImpl<V> = {
 	__index: BodyImpl<V>,
-	__tostring: (self: any) -> string,
-	asBytes: (self: any) -> Result<buffer, EncodingError>,
-	asText: (self: any) -> Result<V & string, EncodingError>,
-	asJson: (self: any) -> Result<V & Json, EncodingError>,
-	asForm: (self: any) -> Result<V & Form, EncodingError>,
+	__tostring: (self: Body<V>) -> string,
+	asBytes: (self: Body<V>) -> Result<buffer, EncodingError>,
+	asText: (self: Body<V>) -> Result<V & string, EncodingError>,
+	asJson: (self: Body<V>) -> Result<V & Json, EncodingError>,
+	asForm: (self: Body<V>) -> Result<V & Form, EncodingError>,
 }
 type BodyStruct = {
 	_contentType: ContentType,
 	_content: Json | buffer | string | Form,
 }
-export type Body<V> = BodyImpl<V> --typeof(setmetatable({}, {} :: BodyImpl))
+export type Body<V> = BodyStruct & BodyImpl<V>
 -- Constants
 -- Variables
 -- References
@@ -60,9 +60,11 @@ function Body:asBytes(): Result<buffer, EncodingError>
 		if self._contentType == "text/json" then
 			return buffer.fromstring(LuneUtil.Net.jsonEncode(self._content))
 		elseif self._contentType == "application/octet-stream" then
+			assert(typeof(self._content) == "buffer", `Content must be a buffer`)
 			return self._content
 		elseif self._contentType == "text/plain" then
-			return buffer.fromstring(self._content)
+			assert(typeof(self._content) == "string", `Content must be a string`)
+			return buffer.fromstring(self._content :: string)
 		elseif self._contentType == "multipart/form-data" then
 			return buffer.fromstring(self:asText():unwrap())
 		else
@@ -87,11 +89,13 @@ function Body:asText(): Result<string, EncodingError>
 		if self._contentType == "text/json" then
 			return LuneUtil.Net.jsonEncode(self._content)
 		elseif self._contentType == "application/octet-stream" then
+			assert(typeof(self._content) == "buffer", `Content must be a buffer`)
 			return buffer.tostring(self._content)
 		elseif self._contentType == "text/plain" then
+			assert(typeof(self._content) == "string", `Content must be a string`)
 			return self._content
 		elseif self._contentType == "multipart/form-data" then
-			local form: Form = self._content
+			local form: Form = self._content :: any
 			local boundary: string = form.boundary
 			local body: string = ""
 
@@ -150,11 +154,13 @@ function Body:asJson(): Result<Json, EncodingError>
 		if self._contentType == "text/json" then
 			return self._content
 		elseif self._contentType == "application/octet-stream" then
+			assert(typeof(self._content) == "buffer", `Content must be a buffer`)
 			return LuneUtil.Net.jsonDecode(buffer.tostring(self._content))
 		elseif self._contentType == "text/plain" then
+			assert(typeof(self._content) == "string", `Content must be a string`)
 			return LuneUtil.Net.jsonDecode(self._content)
 		elseif self._contentType == "multipart/form-data" then
-			local form: Form = self._content
+			local form: Form = self._content :: any
 			local files: { [string]: FormFile } = {}
 			form.files:forEachPair(function(k: string, v)
 				files[k] = {
@@ -366,13 +372,16 @@ function Body:asForm(): Result<Form, EncodingError>
 		end
 
 		if self._contentType == "text/json" then
+			assert(typeof(self._content) == "table", `Content must be a table`)
 			return buildFromJson(self._content)
 		elseif self._contentType == "application/octet-stream" then
+			assert(typeof(self._content) == "buffer", `Content must be a buffer`)
 			return buildFromText(buffer.tostring(self._content))
 		elseif self._contentType == "text/plain" then
+			assert(typeof(self._content) == "string", `Content must be a string`)
 			return buildFromText(self._content)
 		elseif self._contentType == "multipart/form-data" then
-			return self._content
+			return self._content :: any
 		else
 			error(`Unknown content type: "{self._contentType}"`)
 		end

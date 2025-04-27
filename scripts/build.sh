@@ -61,7 +61,7 @@ cp -r "src" "stage-src"
 if [ "$is_wally" = true ]; then
 	to_wally_path "stage-src"
 fi
-
+cp -r "tests" "$build_dir/tests"
 cp -r "stage-src" "$build_dir/src"
 cp -r "stage-src" "$build_dir/stage-src"
 if [ ! -d "Packages" ]; then
