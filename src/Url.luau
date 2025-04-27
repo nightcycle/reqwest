@@ -221,7 +221,9 @@ end
 return {
 	from = function(
 		value: PotentialSecret,
-		query: (HashMap<PotentialSecret, PotentialSecret> | { [PotentialSecret]: PotentialSecret })?
+		query: (
+			HashMap<PotentialSecret, PotentialSecret> | { [PotentialSecret]: PotentialSecret? }
+		)?
 	): Url
 		return newUrl(
 			value,
