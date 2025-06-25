@@ -10,7 +10,7 @@ exclude = ["Packages", ".vscode"]
 [dependencies]
 option = "nightcycle/option@^1"
 result = "nightcycle/result@^1"
-future = "nightcycle/future@^0"
+future = "nightcycle/future@^1"
 error = "nightcycle/error@^0"
 vec = "nightcycle/vec@^0"
 hash-map = "nightcycle/hash-map@^0"
