@@ -250,7 +250,7 @@ function Body:asForm(): Result<Form, EncodingError>
 
 			return table.freeze({
 				boundary = boundaryOpt:expect(`"Boundary field not found"`),
-				fields = fields:freeze(),
+				fields = fields:freeze() :: any,
 				files = files:freeze(),
 			} :: Form)
 		end
@@ -343,8 +343,9 @@ function Body:asForm(): Result<Form, EncodingError>
 				else
 					-- This is a regular field
 					-- Check if the content might be JSON
-					local success, jsonData = pcall(function()
-						return LuneUtil.Net.jsonDecode(content)
+					local jsonData
+					local success = pcall(function()
+						jsonData = LuneUtil.Net.jsonDecode(content)
 					end)
 
 					if success and type(jsonData) == "table" then
@@ -367,7 +368,7 @@ function Body:asForm(): Result<Form, EncodingError>
 
 			return table.freeze({
 				boundary = boundary,
-				fields = fieldMap:freeze(),
+				fields = fieldMap:freeze() :: any,
 				files = fileMap:freeze(),
 			})
 		end
