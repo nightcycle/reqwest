@@ -15,7 +15,7 @@
 	"dependencies": {
 		"@nightcycle/option": "^1",
 		"@nightcycle/result": "^1",
-		"@nightcycle/future": "^0",
+		"@nightcycle/future": "^1",
 		"@nightcycle/error": "^0",
 		"@nightcycle/vec": "^0",
 		"@nightcycle/hash-map": "^0",
